@@ -31,13 +31,13 @@ class proxy;
 
 class rule {
 public:
-    static ptr<rule> create(const ptr<proxy>& pr, const address& addr, const ptr<iface>& ifa);
+    static std::shared_ptr<rule> create(const std::shared_ptr<proxy>& pr, const address& addr, const std::shared_ptr<iface>& ifa);
 
-    static ptr<rule> create(const ptr<proxy>& pr, const address& addr, bool stc = true);
+    static std::shared_ptr<rule> create(const std::shared_ptr<proxy>& pr, const address& addr, bool stc = true);
 
     const address& addr() const;
 
-    ptr<iface> daughter() const;
+    std::shared_ptr<iface> daughter() const;
 
     bool is_auto() const;
 
@@ -54,11 +54,11 @@ public:
     void autovia(bool val);
 
 private:
-    weak_ptr<rule> _ptr;
+    std::weak_ptr<rule> _ptr;
 
-    weak_ptr<proxy> _pr;
+    std::weak_ptr<proxy> _pr;
 
-    ptr<iface> _daughter;
+    std::shared_ptr<iface> _daughter;
 
     address _addr;
 

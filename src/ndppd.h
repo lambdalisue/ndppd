@@ -24,8 +24,7 @@
 #define NDPPD_VERSION   "0.2.4"
 
 #include <assert.h>
-
-#include "ptr.h"
+#include <memory>
 
 #include "logger.h"
 #include "conf.h"

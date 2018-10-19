@@ -22,7 +22,7 @@
 
 NDPPD_NS_BEGIN
 
-std::list<ptr<route> > route::_routes;
+std::list<std::shared_ptr<route> > route::_routes;
 
 int route::_ttl;
 
@@ -82,7 +82,7 @@ std::string route::token(const char* str)
 void route::load(const std::string& path)
 {
     // Hack to make sure the interfaces are not freed prematurely.
-    std::list<ptr<route> > tmp_routes(_routes);
+    std::list<std::shared_ptr<route> > tmp_routes(_routes);
     _routes.clear();
 
     logger::debug() << "reading routes";
@@ -133,34 +133,34 @@ void route::update(int elapsed_time)
     }
 }
 
-ptr<route> route::create(const address& addr, const std::string& ifname)
+std::shared_ptr<route> route::create(const address& addr, const std::string& ifname)
 {
-    ptr<route> rt(new route(addr, ifname));
+    std::shared_ptr<route> rt(new route(addr, ifname));
     // logger::debug() << "route::create() addr=" << addr << ", ifname=" << ifname;
     _routes.push_back(rt);
     return rt;
 }
 
-ptr<route> route::find(const address& addr)
+std::shared_ptr<route> route::find(const address& addr)
 {
-    for (std::list<ptr<route> >::iterator it = _routes.begin();
+    for (std::list<std::shared_ptr<route> >::iterator it = _routes.begin();
             it != _routes.end(); it++) {
         if ((*it)->addr() == addr)
             return *it;
     }
 
-    return ptr<route>();
+    return std::shared_ptr<route>();
 }
 
-ptr<iface> route::find_and_open(const address& addr)
+std::shared_ptr<iface> route::find_and_open(const address& addr)
 {
-    ptr<route> rt;
+    std::shared_ptr<route> rt;
 
     if (rt = find(addr)) {
         return rt->ifa();
     }
 
-    return ptr<iface>();
+    return std::shared_ptr<iface>();
 }
 
 const std::string& route::ifname() const
@@ -168,14 +168,14 @@ const std::string& route::ifname() const
     return _ifname;
 }
 
-ptr<iface> route::ifa()
+std::shared_ptr<iface> route::ifa()
 {
     if (!_ifa) {
         logger::debug() << "router::ifa() opening interface '" << _ifname << "'";
         return _ifa = iface::open_ifd(_ifname);
     }
 
-    return ptr<iface>();
+    return std::shared_ptr<iface>();
 }
 
 const address& route::addr() const

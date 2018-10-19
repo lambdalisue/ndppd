@@ -31,7 +31,7 @@ class address {
 public:
     address();
     address(const address& addr);
-    address(const ptr<address>& addr);
+    address(const std::shared_ptr<address>& addr);
     address(const std::string& str);
     address(const char* str);
     address(const in6_addr& addr);
@@ -77,16 +77,16 @@ public:
     
     static void load(const std::string& path);
     
-    static std::list<ptr<route> >::iterator addresses_begin();
+    static std::list<std::shared_ptr<route> >::iterator addresses_begin();
     
-    static std::list<ptr<route> >::iterator addresses_end();
+    static std::list<std::shared_ptr<route> >::iterator addresses_end();
 
 private:
     static int _ttl;
 
     static int _c_ttl;
     
-    static std::list<ptr<route> > _addresses;
+    static std::list<std::shared_ptr<route> > _addresses;
     
     struct in6_addr _addr, _mask;
 };

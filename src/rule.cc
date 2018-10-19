@@ -37,9 +37,9 @@ rule::rule()
 {
 }
 
-ptr<rule> rule::create(const ptr<proxy>& pr, const address& addr, const ptr<iface>& ifa)
+std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const address& addr, const std::shared_ptr<iface>& ifa)
 {
-    ptr<rule> ru(new rule());
+    std::shared_ptr<rule> ru(new rule());
     ru->_ptr  = ru;
     ru->_pr   = pr;
     ru->_daughter  = ifa;
@@ -62,9 +62,9 @@ ptr<rule> rule::create(const ptr<proxy>& pr, const address& addr, const ptr<ifac
     return ru;
 }
 
-ptr<rule> rule::create(const ptr<proxy>& pr, const address& addr, bool aut)
+std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const address& addr, bool aut)
 {
-    ptr<rule> ru(new rule());
+    std::shared_ptr<rule> ru(new rule());
     ru->_ptr   = ru;
     ru->_pr    = pr;
     ru->_addr  = addr;
@@ -86,7 +86,7 @@ const address& rule::addr() const
     return _addr;
 }
 
-ptr<iface> rule::daughter() const
+std::shared_ptr<iface> rule::daughter() const
 {
     return _daughter;
 }

@@ -33,7 +33,7 @@
 
 NDPPD_NS_BEGIN
 
-std::list<ptr<route> > address::_addresses;
+std::list<std::shared_ptr<route> > address::_addresses;
 
 int address::_ttl;
 
@@ -57,7 +57,7 @@ address::address(const address& addr)
     _mask.s6_addr32[3] = addr._mask.s6_addr32[3];
 }
 
-address::address(const ptr<address>& addr)
+address::address(const std::shared_ptr<address>& addr)
 {
     _addr.s6_addr32[0] = addr->_addr.s6_addr32[0];
     _addr.s6_addr32[1] = addr->_addr.s6_addr32[1];
@@ -345,17 +345,17 @@ bool address::is_unicast() const
 
 void address::add(const address& addr, const std::string& ifname)
 {
-    ptr<route> rt(new route(addr, ifname));
+    std::shared_ptr<route> rt(new route(addr, ifname));
     // logger::debug() << "address::create() addr=" << addr << ", ifname=" << ifname;
     _addresses.push_back(rt);
 }
 
-std::list<ptr<route> >::iterator address::addresses_begin()
+std::list<std::shared_ptr<route> >::iterator address::addresses_begin()
 {
     return _addresses.begin();
 }
 
-std::list<ptr<route> >::iterator address::addresses_end()
+std::list<std::shared_ptr<route> >::iterator address::addresses_end()
 {
     return _addresses.end();
 }
@@ -363,7 +363,7 @@ std::list<ptr<route> >::iterator address::addresses_end()
 void address::load(const std::string& path)
 {
     // Hack to make sure the addresses are not freed prematurely.
-    std::list<ptr<route> > tmp_addresses(_addresses);
+    std::list<std::shared_ptr<route> > tmp_addresses(_addresses);
     _addresses.clear();
 
     logger::debug() << "reading IP addresses";

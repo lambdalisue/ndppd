@@ -72,7 +72,7 @@ bool conf::empty() const
     return _value == "";
 }
 
-ptr<conf> conf::load(const std::string& path)
+    std::shared_ptr<conf> conf::load(const std::string& path)
 {
     try {
         std::ifstream ifs;
@@ -83,7 +83,7 @@ ptr<conf> conf::load(const std::string& path)
 
         const char* c_buf = buf.c_str();
 
-        ptr<conf> cf(new conf);
+        std::shared_ptr<conf> cf(new conf);
 
         if (cf->parse_block(&c_buf)) {
             cf->dump(LOG_DEBUG);
@@ -95,7 +95,7 @@ ptr<conf> conf::load(const std::string& path)
         logger::error() << "Failed to load configuration file '" << path << "'";
     }
 
-    return ptr<conf>();
+    return std::shared_ptr<conf>();
 }
 
 bool conf::is_block() const
@@ -156,10 +156,10 @@ bool conf::parse_block(const char** str)
             p = skip(p, false);
         }
 
-        ptr<conf> cf(new conf);
+        std::shared_ptr<conf> cf(new conf);
 
         if (cf->parse(&p)) {
-            _map.insert(std::pair<std::string, ptr<conf> >(ss.str(), cf));
+            _map.insert(std::pair<std::string, std::shared_ptr<conf> >(ss.str(), cf));
         } else {
             return false;
         }
@@ -228,7 +228,7 @@ void conf::dump(logger& l, int level) const
     if (_is_block) {
         l << "{" << logger::endl;
 
-        std::multimap<std::string, ptr<conf> >::const_iterator it;
+        std::multimap<std::string, std::shared_ptr<conf> >::const_iterator it;
 
         for (it = _map.begin(); it != _map.end(); it++) {
             l << pfx << "    " << it->first << " ";
@@ -241,35 +241,35 @@ void conf::dump(logger& l, int level) const
     l << logger::endl;
 }
 
-ptr<conf> conf::operator()(const std::string& name, int index) const
+std::shared_ptr<conf> conf::operator()(const std::string& name, int index) const
 {
     return find(name, index);
 }
 
-ptr<conf> conf::find(const std::string& name, int index) const
+std::shared_ptr<conf> conf::find(const std::string& name, int index) const
 {
-    std::multimap<std::string, ptr<conf> >::const_iterator it;
+    std::multimap<std::string, std::shared_ptr<conf> >::const_iterator it;
     for (it = _map.find(name); it != _map.end(); it++) {
         if (index-- <= 0)
             return it->second;
     }
 
-    return ptr<conf>();
+    return std::shared_ptr<conf>();
 }
 
-ptr<conf> conf::operator[](const std::string& name) const
+std::shared_ptr<conf> conf::operator[](const std::string& name) const
 {
     return find(name, 0);
 }
 
-std::vector<ptr<conf> > conf::find_all(const std::string& name) const
+std::vector<std::shared_ptr<conf> > conf::find_all(const std::string& name) const
 {
-    std::vector<ptr<conf> > vec;
+    std::vector<std::shared_ptr<conf> > vec;
 
-    std::multimap<std::string, ptr<conf> >::const_iterator it;
+    std::multimap<std::string, std::shared_ptr<conf> >::const_iterator it;
 
-    std::pair<std::multimap<std::string, ptr<conf> >::const_iterator,
-        std::multimap<std::string, ptr<conf> >::const_iterator> ret;
+    std::pair<std::multimap<std::string, std::shared_ptr<conf> >::const_iterator,
+        std::multimap<std::string, std::shared_ptr<conf> >::const_iterator> ret;
 
     ret = _map.equal_range(name);
 

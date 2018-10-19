@@ -23,24 +23,29 @@
 
 NDPPD_NS_BEGIN
 
-std::list<weak_ptr<session> > session::_sessions;
+std::list<std::weak_ptr<session> > session::_sessions;
 
 static address all_nodes = address("ff02::1");
 
 void session::update_all(int elapsed_time)
 {
-    for (std::list<weak_ptr<session> >::iterator it = _sessions.begin();
+    for (std::list<std::weak_ptr<session> >::iterator it = _sessions.begin();
             it != _sessions.end(); ) {
-        if (!*it) {
+
+        auto se = it->lock();
+
+        if (!se) {
             _sessions.erase(it++);
             continue;
         }
 
-        ptr<session> se = *it++;
+        it++;
 
         if ((se->_ttl -= elapsed_time) >= 0) {
             continue;
         }
+
+        auto pr = se->_pr.lock();
 
         switch (se->_status) {
             
@@ -48,7 +53,7 @@ void session::update_all(int elapsed_time)
             if (se->_fails < se->_retries) {
                 logger::debug() << "session will keep trying [taddr=" << se->_taddr << "]";
                 
-                se->_ttl     = se->_pr->timeout();
+                se->_ttl     = se->_pr.lock()->timeout();
                 se->_fails++;
                 
                 // Send another solicit
@@ -58,7 +63,7 @@ void session::update_all(int elapsed_time)
                 logger::debug() << "session is now invalid [taddr=" << se->_taddr << "]";
                 
                 se->_status = session::INVALID;
-                se->_ttl    = se->_pr->deadtime();
+                se->_ttl    = pr->deadtime();
             }
             break;
             
@@ -66,13 +71,13 @@ void session::update_all(int elapsed_time)
             logger::debug() << "session is became invalid [taddr=" << se->_taddr << "]";
             
             if (se->_fails < se->_retries) {
-                se->_ttl     = se->_pr->timeout();
+                se->_ttl     = pr->timeout();
                 se->_fails++;
                 
                 // Send another solicit
                 se->send_solicit();
             } else {            
-                se->_pr->remove_session(se);
+                pr->remove_session(se);
             }
             break;
             
@@ -82,19 +87,19 @@ void session::update_all(int elapsed_time)
             {
                 logger::debug() << "session is renewing [taddr=" << se->_taddr << "]";
                 se->_status  = session::RENEWING;
-                se->_ttl     = se->_pr->timeout();
+                se->_ttl     = pr->timeout();
                 se->_fails   = 0;
                 se->_touched = false;
 
                 // Send another solicit to make sure the route is still valid
                 se->send_solicit();
             } else {
-                se->_pr->remove_session(se);
+                pr->remove_session(se);
             }            
             break;
 
         default:
-            se->_pr->remove_session(se);
+            pr->remove_session(se);
         }
     }
 }
@@ -104,16 +109,16 @@ session::~session()
     logger::debug() << "session::~session() this=" << logger::format("%x", this);
     
     if (_wired == true) {
-        for (std::list<ptr<iface> >::iterator it = _ifaces.begin();
+        for (std::list<std::shared_ptr<iface> >::iterator it = _ifaces.begin();
             it != _ifaces.end(); it++) {
             handle_auto_unwire((*it)->name());
         }
     }
 }
 
-ptr<session> session::create(const ptr<proxy>& pr, const address& taddr, bool auto_wire, bool keepalive, int retries)
+std::shared_ptr<session> session::create(const std::shared_ptr<proxy>& pr, const address& taddr, bool auto_wire, bool keepalive, int retries)
 {
-    ptr<session> se(new session());
+    std::shared_ptr<session> se(new session());
 
     se->_ptr       = se;
     se->_pr        = pr;
@@ -128,13 +133,13 @@ ptr<session> session::create(const ptr<proxy>& pr, const address& taddr, bool au
     _sessions.push_back(se);
 
     logger::debug()
-        << "session::create() pr=" << logger::format("%x", (proxy* )pr) << ", proxy=" << ((pr->ifa()) ? pr->ifa()->name() : "null")
-        << ", taddr=" << taddr << " =" << logger::format("%x", (session* )se);
+        << "session::create() pr=" << logger::format("%x", (proxy* )pr.get()) << ", proxy=" << ((pr->ifa()) ? pr->ifa()->name() : "null")
+        << ", taddr=" << taddr << " =" << logger::format("%x", (session* )se.get());
 
     return se;
 }
 
-void session::add_iface(const ptr<iface>& ifa)
+void session::add_iface(const std::shared_ptr<iface>& ifa)
 {
     if (std::find(_ifaces.begin(), _ifaces.end(), ifa) != _ifaces.end())
         return;
@@ -144,19 +149,19 @@ void session::add_iface(const ptr<iface>& ifa)
 
 void session::add_pending(const address& addr)
 {
-    for (std::list<ptr<address> >::iterator ad = _pending.begin(); ad != _pending.end(); ad++) {
+    for (std::list<std::shared_ptr<address> >::iterator ad = _pending.begin(); ad != _pending.end(); ad++) {
         if (addr == (*ad))
             return;
     }
 
-    _pending.push_back(new address(addr));
+    _pending.push_back(std::shared_ptr<address>(new address(addr)));
 }
 
 void session::send_solicit()
 {
     logger::debug() << "session::send_solicit() (_ifaces.size() = " << _ifaces.size() << ")";
 
-    for (std::list<ptr<iface> >::iterator it = _ifaces.begin();
+    for (std::list<std::shared_ptr<iface> >::iterator it = _ifaces.begin();
             it != _ifaces.end(); it++) {
         logger::debug() << " - " << (*it)->name();
         (*it)->write_solicit(_taddr);
@@ -170,7 +175,7 @@ void session::touch()
         _touched = true;
         
         if (status() == session::WAITING || status() == session::INVALID) {
-            _ttl = _pr->timeout();
+            _ttl = _pr.lock()->timeout();
             
             logger::debug() << "session is now probing [taddr=" << _taddr << "]";
             
@@ -181,7 +186,8 @@ void session::touch()
 
 void session::send_advert(const address& daddr)
 {
-    _pr->ifa()->write_advert(daddr, _taddr, _pr->router());
+    auto pr = _pr.lock();
+    pr->ifa()->write_advert(daddr, _taddr, pr->router());
 }
 
 void session::handle_auto_wire(const address& saddr, const std::string& ifname, bool use_via)
@@ -296,8 +302,10 @@ void session::handle_advert(const address& saddr, const std::string& ifname, boo
 
 void session::handle_advert()
 {
+    auto pr = _pr.lock();
+
     logger::debug()
-        << "session::handle_advert() taddr=" << _taddr << ", ttl=" << _pr->ttl();
+        << "session::handle_advert() taddr=" << _taddr << ", ttl=" << pr->ttl();
     
     if (_status != VALID) {
         _status = VALID;
@@ -305,14 +313,14 @@ void session::handle_advert()
         logger::debug() << "session is active [taddr=" << _taddr << "]";
     }
     
-    _ttl    = _pr->ttl();
+    _ttl    = pr->ttl();
     _fails  = 0;
     
     if (!_pending.empty()) {
-        for (std::list<ptr<address> >::iterator ad = _pending.begin();
+        for (std::list<std::shared_ptr<address> >::iterator ad = _pending.begin();
                 ad != _pending.end(); ad++) {
-            ptr<address> addr = (*ad);
-            logger::debug() << " - forward to " << addr;
+            std::shared_ptr<address> addr = (*ad);
+            logger::debug() << " - forward to " << *addr;
 
             send_advert(addr);
         }

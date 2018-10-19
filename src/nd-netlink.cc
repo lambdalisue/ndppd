@@ -35,7 +35,7 @@ address_create_ipv6(struct in6_addr *local)
     return addr;
 }
 
-void if_add_to_list(int ifindex, const ptr<iface>& ifa)
+void if_add_to_list(int ifindex, const std::shared_ptr<iface>& ifa)
 {
     bool found = false;
 

@@ -36,9 +36,9 @@ public:
     // Destructor.
     ~iface();
 
-    static ptr<iface> open_ifd(const std::string& name);
+    static std::shared_ptr<iface> open_ifd(const std::string& name);
 
-    static ptr<iface> open_pfd(const std::string& name, bool promiscuous);
+    static std::shared_ptr<iface> open_pfd(const std::string& name, bool promiscuous);
 
     static int poll_all();
 
@@ -67,19 +67,19 @@ public:
     // Returns the name of the interface.
     const std::string& name() const;
     
-    std::list<weak_ptr<proxy> >::iterator serves_begin();
+    std::list<std::weak_ptr<proxy> >::iterator serves_begin();
     
-    std::list<weak_ptr<proxy> >::iterator serves_end();
+    std::list<std::weak_ptr<proxy> >::iterator serves_end();
     
-    void add_serves(const ptr<proxy>& proxy);
+    void add_serves(const std::shared_ptr<proxy>& proxy);
     
-    std::list<weak_ptr<proxy> >::iterator parents_begin();
+    std::list<std::weak_ptr<proxy> >::iterator parents_begin();
     
-    std::list<weak_ptr<proxy> >::iterator parents_end();
+    std::list<std::weak_ptr<proxy> >::iterator parents_end();
     
-    void add_parent(const ptr<proxy>& parent);
+    void add_parent(const std::shared_ptr<proxy>& parent);
     
-    static std::map<std::string, weak_ptr<iface> > _map;
+    static std::map<std::string, std::weak_ptr<iface> > _map;
 
 private:
 
@@ -94,7 +94,7 @@ private:
     static void cleanup();
 
     // Weak pointer so this object can reference itself.
-    weak_ptr<iface> _ptr;
+    std::weak_ptr<iface> _ptr;
 
     // The "generic" ICMPv6 socket for reading/writing NB_NEIGHBOR_ADVERT
     // messages as well as writing NB_NEIGHBOR_SOLICIT messages.
@@ -113,9 +113,9 @@ private:
     // Name of this interface.
     std::string _name;
     
-    std::list<weak_ptr<proxy> > _serves;
+    std::list<std::weak_ptr<proxy> > _serves;
     
-    std::list<weak_ptr<proxy> > _parents;
+    std::list<std::weak_ptr<proxy> > _parents;
 
     // The link-layer address of this interface.
     struct ether_addr hwaddr;

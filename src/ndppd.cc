@@ -64,35 +64,35 @@ static int daemonize()
     return 0;
 }
 
-static ptr<conf> load_config(const std::string& path)
+static std::shared_ptr<conf> load_config(const std::string& path)
 {
-    ptr<conf> cf, x_cf;
+    std::shared_ptr<conf> cf, x_cf;
 
     if (!(cf = conf::load(path)))
-        return (conf*)NULL;
+        return {};
 
-    std::vector<ptr<conf> >::const_iterator p_it;
+    std::vector<std::shared_ptr<conf> >::const_iterator p_it;
 
-    std::vector<ptr<conf> > proxies(cf->find_all("proxy"));
+    std::vector<std::shared_ptr<conf> > proxies(cf->find_all("proxy"));
 
     for (p_it = proxies.begin(); p_it != proxies.end(); p_it++) {
-        ptr<conf> pr_cf = *p_it;
+        std::shared_ptr<conf> pr_cf = *p_it;
 
         if (pr_cf->empty()) {
             logger::error() << "'proxy' section is missing interface name";
-            return (conf*)NULL;
+            return {};
         }
 
-        std::vector<ptr<conf> >::const_iterator r_it;
+        std::vector<std::shared_ptr<conf> >::const_iterator r_it;
 
-        std::vector<ptr<conf> > rules(pr_cf->find_all("rule"));
+        std::vector<std::shared_ptr<conf> > rules(pr_cf->find_all("rule"));
 
         for (r_it = rules.begin(); r_it != rules.end(); r_it++) {
-            ptr<conf> ru_cf =* r_it;
+            std::shared_ptr<conf> ru_cf =* r_it;
 
             if (ru_cf->empty()) {
                 logger::error() << "'rule' is missing an IPv6 address/net";
-                return (conf*)NULL;
+                return {};
             }
 
             address addr(*ru_cf);
@@ -102,18 +102,18 @@ static ptr<conf> load_config(const std::string& path)
                     logger::error()
                         << "Only one of 'iface', 'auto' and 'static' may "
                         << "be specified.";
-                    return (conf*)NULL;
+                    return {};
                 }
                 if ((const std::string&)*x_cf == "") {
                     logger::error() << "'iface' expected an interface name";
-                    return (conf*)NULL;
+                    return {};
                 }
             } else if (ru_cf->find("static")) {
                 if (ru_cf->find("auto")) {
                     logger::error()
                         << "Only one of 'iface', 'auto' and 'static' may "
                         << "be specified.";
-                    return (conf*)NULL;
+                    return {};
                 }
                 if (addr.prefix() <= 120) {
                     logger::warning()
@@ -124,7 +124,7 @@ static ptr<conf> load_config(const std::string& path)
                 logger::error()
                     << "You must specify either 'iface', 'auto' or "
                     << "'static'";
-                return (conf*)NULL;
+                return {};
 
             }
         }
@@ -133,9 +133,9 @@ static ptr<conf> load_config(const std::string& path)
     return cf;
 }
 
-static bool configure(ptr<conf>& cf)
+static bool configure(std::shared_ptr<conf>& cf)
 {
-    ptr<conf> x_cf;
+    std::shared_ptr<conf> x_cf;
 
     if (!(x_cf = cf->find("route-ttl")))
         route::ttl(30000);
@@ -147,14 +147,14 @@ static bool configure(ptr<conf>& cf)
     else
         address::ttl(*x_cf);
     
-    std::list<ptr<rule> > myrules;
+    std::list<std::shared_ptr<rule> > myrules;
 
-    std::vector<ptr<conf> >::const_iterator p_it;
+    std::vector<std::shared_ptr<conf> >::const_iterator p_it;
 
-    std::vector<ptr<conf> > proxies(cf->find_all("proxy"));
+    std::vector<std::shared_ptr<conf> > proxies(cf->find_all("proxy"));
 
     for (p_it = proxies.begin(); p_it != proxies.end(); p_it++) {
-        ptr<conf> pr_cf = *p_it;
+        std::shared_ptr<conf> pr_cf = *p_it;
 
         if (pr_cf->empty()) {
             return false;
@@ -166,8 +166,8 @@ static bool configure(ptr<conf>& cf)
         else
             promiscuous = *x_cf;
 
-        ptr<proxy> pr = proxy::open(*pr_cf, promiscuous);
-        if (!pr || pr.is_null() == true) {
+        std::shared_ptr<proxy> pr = proxy::open(*pr_cf, promiscuous);
+        if (!pr) {
             return false;
         }
 
@@ -206,12 +206,12 @@ static bool configure(ptr<conf>& cf)
         else
             pr->timeout(*x_cf);
 
-        std::vector<ptr<conf> >::const_iterator r_it;
+        std::vector<std::shared_ptr<conf> >::const_iterator r_it;
 
-        std::vector<ptr<conf> > rules(pr_cf->find_all("rule"));
+        std::vector<std::shared_ptr<conf> > rules(pr_cf->find_all("rule"));
 
         for (r_it = rules.begin(); r_it != rules.end(); r_it++) {
-            ptr<conf> ru_cf =* r_it;
+            std::shared_ptr<conf> ru_cf =* r_it;
 
             address addr(*ru_cf);
             
@@ -223,8 +223,8 @@ static bool configure(ptr<conf>& cf)
 
             if (x_cf = ru_cf->find("iface"))
             {
-                ptr<iface> ifa = iface::open_ifd(*x_cf);
-                if (!ifa || ifa.is_null() == true) {
+                std::shared_ptr<iface> ifa = iface::open_ifd(*x_cf);
+                if (!ifa) {
                     return false;
                 }
                 
@@ -240,21 +240,21 @@ static bool configure(ptr<conf>& cf)
     }
     
     // Print out all the topology    
-    for (std::map<std::string, weak_ptr<iface> >::iterator i_it = iface::_map.begin(); i_it != iface::_map.end(); i_it++) {
-        ptr<iface> ifa = i_it->second;
+    for (std::map<std::string, std::weak_ptr<iface> >::iterator i_it = iface::_map.begin(); i_it != iface::_map.end(); i_it++) {
+        std::shared_ptr<iface> ifa = i_it->second.lock();
         
         logger::debug() << "iface " << ifa->name() << " {";
         
-        for (std::list<weak_ptr<proxy> >::iterator pit = ifa->serves_begin(); pit != ifa->serves_end(); pit++) {
-            ptr<proxy> pr = (*pit);
+        for (std::list<std::weak_ptr<proxy> >::iterator pit = ifa->serves_begin(); pit != ifa->serves_end(); pit++) {
+            std::shared_ptr<proxy> pr = pit->lock();
             if (!pr) continue;
+
+            logger::debug() << "  " << "proxy " << logger::format("%x", pr.get()) << " {";
             
-            logger::debug() << "  " << "proxy " << logger::format("%x", pr.get_pointer()) << " {";
-            
-             for (std::list<ptr<rule> >::iterator rit = pr->rules_begin(); rit != pr->rules_end(); rit++) {
-                ptr<rule> ru = *rit;
+             for (std::list<std::shared_ptr<rule> >::iterator rit = pr->rules_begin(); rit != pr->rules_end(); rit++) {
+                std::shared_ptr<rule> ru = *rit;
                 
-                logger::debug() << "    " << "rule " << logger::format("%x", ru.get_pointer()) << " {";
+                logger::debug() << "    " << "rule " << logger::format("%x", ru.get()) << " {";
                 logger::debug() << "      " << "taddr " << ru->addr()<< ";";
                 if (ru->is_auto())
                     logger::debug() << "      " << "auto;";
@@ -269,10 +269,10 @@ static bool configure(ptr<conf>& cf)
         }
         
         logger::debug() << "  " << "parents {";
-        for (std::list<weak_ptr<proxy> >::iterator pit = ifa->parents_begin(); pit != ifa->parents_end(); pit++) {
-            ptr<proxy> pr = (*pit);
+        for (std::list<std::weak_ptr<proxy> >::iterator pit = ifa->parents_begin(); pit != ifa->parents_end(); pit++) {
+            std::shared_ptr<proxy> pr = pit->lock();
             
-            logger::debug() << "    " << "parent " << logger::format("%x", pr.get_pointer()) << ";";
+            logger::debug() << "    " << "parent " << logger::format("%x", pr.get()) << ";";
         }
         logger::debug() << "  }";
         
@@ -347,8 +347,8 @@ int main(int argc, char* argv[], char* env[])
 
     // Load configuration.
 
-    ptr<conf> cf = load_config(config_path);
-    if (cf.is_null())
+    std::shared_ptr<conf> cf = load_config(config_path);
+    if (!cf)
         return -1;
 
     if (!configure(cf))

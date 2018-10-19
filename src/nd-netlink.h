@@ -23,6 +23,6 @@ NDPPD_NS_BEGIN
 bool netlink_teardown();
 bool netlink_setup();
 bool if_addr_find(std::string iface, const struct in6_addr *iaddr);
-void if_add_to_list(int ifindex, const ptr<iface>& ifa);
+void if_add_to_list(int ifindex, const std::shared_ptr<iface>& ifa);
 
 NDPPD_NS_END

@@ -44,7 +44,7 @@
 
 NDPPD_NS_BEGIN
 
-std::map<std::string, weak_ptr<iface> > iface::_map;
+std::map<std::string, std::weak_ptr<iface> > iface::_map;
 
 bool iface::_map_dirty = false;
 
@@ -78,32 +78,30 @@ iface::~iface()
     _parents.clear();
 }
 
-ptr<iface> iface::open_pfd(const std::string& name, bool promiscuous)
+std::shared_ptr<iface> iface::open_pfd(const std::string& name, bool promiscuous)
 {
     int fd = 0;
 
-    std::map<std::string, weak_ptr<iface> >::iterator it = _map.find(name);
+    std::map<std::string, std::weak_ptr<iface> >::iterator it = _map.find(name);
 
-    ptr<iface> ifa;
+    std::shared_ptr<iface> ifa;
 
-    if (it != _map.end()) {
-        if (it->second->_pfd >= 0)
-            return it->second;
-
-        ifa = it->second;
+    if (it != _map.end() && (ifa = it->second.lock())) {
+        if (ifa->_pfd >= 0)
+            return ifa;
     } else {
         // We need an _ifs, so let's set one up.
         ifa = open_ifd(name);
     }
 
     if (!ifa)
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
 
     // Create a socket.
 
     if ((fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_IPV6))) < 0) {
         logger::error() << "Unable to create socket";
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
     }
 
     // Bind to the specified interface.
@@ -117,13 +115,13 @@ ptr<iface> iface::open_pfd(const std::string& name, bool promiscuous)
     if (!(lladdr.sll_ifindex = if_nametoindex(name.c_str()))) {
         close(fd);
         logger::error() << "Failed to bind to interface '" << name << "'";
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
     }
 
     if (bind(fd, (struct sockaddr* )&lladdr, sizeof(struct sockaddr_ll)) < 0) {
         close(fd);
         logger::error() << "Failed to bind to interface '" << name << "'";
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
     }
 
     // Switch to non-blocking mode.
@@ -133,7 +131,7 @@ ptr<iface> iface::open_pfd(const std::string& name, bool promiscuous)
     if (ioctl(fd, FIONBIO, (char* )&on) < 0) {
         close(fd);
         logger::error() << "Failed to switch to non-blocking on interface '" << name << "'";
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
     }
 
     // Set up filter.
@@ -167,7 +165,7 @@ ptr<iface> iface::open_pfd(const std::string& name, bool promiscuous)
 
     if (setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0) {
         logger::error() << "Failed to set filter";
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
     }
 
     // Set up an instance of 'iface'.
@@ -189,20 +187,22 @@ ptr<iface> iface::open_pfd(const std::string& name, bool promiscuous)
     return ifa;
 }
 
-ptr<iface> iface::open_ifd(const std::string& name)
+std::shared_ptr<iface> iface::open_ifd(const std::string& name)
 {
     int fd;
 
-    std::map<std::string, weak_ptr<iface> >::iterator it = _map.find(name);
+    std::map<std::string, std::weak_ptr<iface> >::iterator it = _map.find(name);
 
-    if ((it != _map.end()) && it->second->_ifd)
-        return it->second;
+    std::shared_ptr<iface> ifa;
+
+    if ((it != _map.end()) && (ifa = it->second.lock()) && ifa->_ifd)
+        return ifa;
 
     // Create a socket.
 
     if ((fd = socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6)) < 0) {
         logger::error() << "Unable to create socket";
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
     }
 
     // Bind to the specified interface.
@@ -216,7 +216,7 @@ ptr<iface> iface::open_ifd(const std::string& name)
     if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE,& ifr, sizeof(ifr)) < 0) {
         close(fd);
         logger::error() << "Failed to bind to interface '" << name << "'";
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
     }
 
     // Detect the link-layer address.
@@ -230,7 +230,7 @@ ptr<iface> iface::open_ifd(const std::string& name)
         logger::error()
             << "Failed to detect link-layer address for interface '"
             << name << "'";
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
     }
 
     logger::debug()
@@ -245,14 +245,14 @@ ptr<iface> iface::open_ifd(const std::string& name)
                    sizeof(hops)) < 0) {
         close(fd);
         logger::error() << "iface::open_ifd() failed IPV6_MULTICAST_HOPS";
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
     }
 
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &hops,
                    sizeof(hops)) < 0) {
         close(fd);
         logger::error() << "iface::open_ifd() failed IPV6_UNICAST_HOPS";
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
     }
 
     // Switch to non-blocking mode.
@@ -264,7 +264,7 @@ ptr<iface> iface::open_ifd(const std::string& name)
         logger::error()
             << "Failed to switch to non-blocking on interface '"
             << name << "'";
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
     }
 
     // Set up filter.
@@ -275,21 +275,19 @@ ptr<iface> iface::open_ifd(const std::string& name)
 
     if (setsockopt(fd, IPPROTO_ICMPV6, ICMP6_FILTER,& filter, sizeof(filter)) < 0) {
         logger::error() << "Failed to set filter";
-        return ptr<iface>();
+        return std::shared_ptr<iface>();
     }
 
     // Set up an instance of 'iface'.
 
-    ptr<iface> ifa;
-
     if (it == _map.end()) {
-        ifa = new iface();
+        ifa.reset(new iface());
         ifa->_name = name;
         ifa->_ptr  = ifa;
 
         _map[name] = ifa;
     } else {
-        ifa = it->second;
+        ifa = it->second.lock();
     }
 
     ifa->_ifd = fd;
@@ -505,7 +503,7 @@ bool iface::is_local(const address& addr)
 {
     // Check if the address is for an interface we own that is attached to
     // one of the slave interfaces    
-    for (std::list<ptr<route> >::iterator ad = address::addresses_begin(); ad != address::addresses_end(); ad++)
+    for (std::list<std::shared_ptr<route> >::iterator ad = address::addresses_begin(); ad != address::addresses_end(); ad++)
     {
         if ((*ad)->addr() == addr)
             return true;
@@ -517,17 +515,17 @@ bool iface::handle_local(const address& saddr, const address& taddr)
 {
     // Check if the address is for an interface we own that is attached to
     // one of the slave interfaces    
-    for (std::list<ptr<route> >::iterator ad = address::addresses_begin(); ad != address::addresses_end(); ad++)
+    for (std::list<std::shared_ptr<route> >::iterator ad = address::addresses_begin(); ad != address::addresses_end(); ad++)
     {
         if ((*ad)->addr() == taddr)
         {
             // Loop through all the serves that are using this iface to respond to NDP solicitation requests
-            for (std::list<weak_ptr<proxy> >::iterator pit = serves_begin(); pit != serves_end(); pit++) {
-                ptr<proxy> pr = (*pit);
+            for (std::list<std::weak_ptr<proxy> >::iterator pit = serves_begin(); pit != serves_end(); pit++) {
+                std::shared_ptr<proxy> pr = pit->lock();
                 if (!pr) continue;
                 
-                for (std::list<ptr<rule> >::iterator it = pr->rules_begin(); it != pr->rules_end(); it++) {
-                    ptr<rule> ru = *it;
+                for (std::list<std::shared_ptr<rule> >::iterator it = pr->rules_begin(); it != pr->rules_end(); it++) {
+                    std::shared_ptr<rule> ru = *it;
 
                     if (ru->daughter() && ru->daughter()->name() == (*ad)->ifname())
                     {
@@ -552,8 +550,8 @@ void iface::handle_reverse_advert(const address& saddr, const std::string& ifnam
         << "proxy::handle_reverse_advert()";
     
     // Loop through all the parents that forward new NDP soliciation requests to this interface
-    for (std::list<weak_ptr<proxy> >::iterator pit = parents_begin(); pit != parents_end(); pit++) {
-        ptr<proxy> parent = (*pit);
+    for (std::list<std::weak_ptr<proxy> >::iterator pit = parents_begin(); pit != parents_end(); pit++) {
+        std::shared_ptr<proxy> parent = pit->lock();
         if (!parent || !parent->ifa()) {
             continue;
         }
@@ -561,8 +559,8 @@ void iface::handle_reverse_advert(const address& saddr, const std::string& ifnam
         // Setup the reverse path on any proxies that are dealing
         // with the reverse direction (this helps improve connectivity and
         // latency in a full duplex setup)
-        for (std::list<ptr<rule> >::iterator it = parent->rules_begin(); it != parent->rules_end(); it++) {
-            ptr<rule> ru = *it;
+        for (std::list<std::shared_ptr<rule> >::iterator it = parent->rules_begin(); it != parent->rules_end(); it++) {
+            std::shared_ptr<rule> ru = *it;
 
             if (ru->addr() == saddr &&
                 ru->daughter()->name() == ifname)
@@ -582,14 +580,19 @@ void iface::fixup_pollfds()
 
     logger::debug() << "iface::fixup_pollfds() _map.size()=" << _map.size();
 
-    for (std::map<std::string, weak_ptr<iface> >::iterator it = _map.begin();
+    for (std::map<std::string, std::weak_ptr<iface> >::iterator it = _map.begin();
             it != _map.end(); it++) {
-        _pollfds[i].fd      = it->second->_ifd;
+        auto ifa = it->second.lock();
+
+        if (!ifa)
+            continue;
+
+        _pollfds[i].fd      = ifa->_ifd;
         _pollfds[i].events  = POLLIN;
         _pollfds[i].revents = 0;
         i++;
 
-        _pollfds[i].fd      = it->second->_pfd;
+        _pollfds[i].fd      = ifa->_pfd;
         _pollfds[i].events  = POLLIN;
         _pollfds[i].revents = 0;
         i++;
@@ -598,10 +601,10 @@ void iface::fixup_pollfds()
 
 void iface::cleanup()
 {
-    for (std::map<std::string, weak_ptr<iface> >::iterator it = _map.begin();
+    for (std::map<std::string, std::weak_ptr<iface> >::iterator it = _map.begin();
             it != _map.end(); ) {
-        std::map<std::string, weak_ptr<iface> >::iterator c_it = it++;
-        if (!c_it->second) {
+        std::map<std::string, std::weak_ptr<iface> >::iterator c_it = it++;
+        if (c_it->second.expired()) {
             _map.erase(c_it);
         }
     }
@@ -633,7 +636,7 @@ int iface::poll_all()
         return 0;
     }
 
-    std::map<std::string, weak_ptr<iface> >::iterator i_it = _map.begin();
+    std::map<std::string, std::weak_ptr<iface> >::iterator i_it = _map.begin();
 
     int i = 0;
 
@@ -651,7 +654,7 @@ int iface::poll_all()
             continue;
         }
 
-        ptr<iface> ifa = i_it->second;
+        std::shared_ptr<iface> ifa = i_it->second.lock();
 
         address saddr, daddr, taddr;
         ssize_t size;
@@ -680,8 +683,8 @@ int iface::poll_all()
 
             // Loop through all the proxies that are using this iface to respond to NDP solicitation requests
             bool handled = false;
-            for (std::list<weak_ptr<proxy> >::iterator pit = ifa->serves_begin(); pit != ifa->serves_end(); pit++) {
-                ptr<proxy> pr = (*pit);
+            for (std::list<std::weak_ptr<proxy> >::iterator pit = ifa->serves_begin(); pit != ifa->serves_end(); pit++) {
+                std::shared_ptr<proxy> pr = pit->lock();
                 if (!pr) continue;
                 
                 // Process the solicitation request by relating it to other
@@ -708,8 +711,8 @@ int iface::poll_all()
             
             // Process the NDP advert
             bool handled = false;
-            for (std::list<weak_ptr<proxy> >::iterator pit = ifa->parents_begin(); pit != ifa->parents_end(); pit++) {
-                ptr<proxy> pr = (*pit);
+            for (std::list<std::weak_ptr<proxy> >::iterator pit = ifa->parents_begin(); pit != ifa->parents_end(); pit++) {
+                std::shared_ptr<proxy> pr = pit->lock();
                 if (!pr || !pr->ifa()) {
                     continue;
                 }
@@ -718,8 +721,8 @@ int iface::poll_all()
                 // any notifications and thus they must be ignored
                 bool autovia = false;
                 bool is_relevant = false;
-                for (std::list<ptr<rule> >::iterator it = pr->rules_begin(); it != pr->rules_end(); it++) {
-                    ptr<rule> ru = *it;
+                for (std::list<std::shared_ptr<rule> >::iterator it = pr->rules_begin(); it != pr->rules_end(); it++) {
+                    std::shared_ptr<rule> ru = *it;
                     
                     if (ru->addr() == taddr &&
                         ru->daughter() &&
@@ -833,32 +836,32 @@ const std::string& iface::name() const
     return _name;
 }
 
-void iface::add_serves(const ptr<proxy>& pr)
+void iface::add_serves(const std::shared_ptr<proxy>& pr)
 {
     _serves.push_back(pr);
 }
 
-std::list<weak_ptr<proxy> >::iterator iface::serves_begin()
+std::list<std::weak_ptr<proxy> >::iterator iface::serves_begin()
 {
     return _serves.begin();
 }
 
-std::list<weak_ptr<proxy> >::iterator iface::serves_end()
+std::list<std::weak_ptr<proxy> >::iterator iface::serves_end()
 {
     return _serves.end();
 }
 
-void iface::add_parent(const ptr<proxy>& pr)
+void iface::add_parent(const std::shared_ptr<proxy>& pr)
 {
     _parents.push_back(pr);
 }
 
-std::list<weak_ptr<proxy> >::iterator iface::parents_begin()
+std::list<std::weak_ptr<proxy> >::iterator iface::parents_begin()
 {
     return _parents.begin();
 }
 
-std::list<weak_ptr<proxy> >::iterator iface::parents_end()
+std::list<std::weak_ptr<proxy> >::iterator iface::parents_end()
 {
     return _parents.end();
 }

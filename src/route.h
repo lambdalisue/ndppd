@@ -25,11 +25,11 @@ NDPPD_NS_BEGIN
 
 class route {
 public:
-    static ptr<route> create(const address& addr, const std::string& ifname);
+    static std::shared_ptr<route> create(const address& addr, const std::string& ifname);
 
-    static ptr<route> find(const address& addr);
+    static std::shared_ptr<route> find(const address& addr);
 
-    static ptr<iface> find_and_open(const address& addr);
+    static std::shared_ptr<iface> find_and_open(const address& addr);
 
     static void load(const std::string& path);
 
@@ -43,7 +43,7 @@ public:
 
     const address& addr() const;
 
-    ptr<iface> ifa();
+    std::shared_ptr<iface> ifa();
     
     route(const address& addr, const std::string& ifname);
 
@@ -60,9 +60,9 @@ private:
 
     std::string _ifname;
 
-    ptr<iface> _ifa;
+    std::shared_ptr<iface> _ifa;
 
-    static std::list<ptr<route> > _routes;
+    static std::list<std::shared_ptr<route> > _routes;
 
 };
 
