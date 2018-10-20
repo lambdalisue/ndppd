@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #include <cstdio>
 #include <cstdarg>
 #include <cctype>
@@ -26,9 +27,7 @@
 #include "logger.h"
 
 #ifndef DISABLE_SYSLOG
-
 #include <syslog.h>
-
 #endif
 
 using namespace ndppd;
@@ -40,7 +39,7 @@ namespace {
             "Notice",
             "Info",
             "Debug",
-            NULL
+            nullptr
     };
 
     bool use_syslog;
@@ -135,6 +134,18 @@ void Logger::flush() {
             case LogLevel::Error:
                 pri = LOG_ERR;
                 break;
+            case LogLevel::Warning:
+                pri = LOG_WARNING;
+                break;
+            case LogLevel::Notice:
+                pri = LOG_NOTICE;
+                break;
+            case LogLevel::Info:
+                pri = LOG_INFO;
+                break;
+            case LogLevel::Debug:
+                pri = LOG_DEBUG;
+                break;
             default:
                 return;
         }
@@ -199,5 +210,3 @@ bool Logger::verbosity(const std::string &name) {
 
     return false;
 }
-
-
