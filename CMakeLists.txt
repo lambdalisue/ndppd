@@ -12,7 +12,7 @@ INCLUDE(FindPkgConfig)
 pkg_check_modules(LIBNL3 libnl-3.0)
 pkg_check_modules(LIBNL3_ROUTE libnl-route-3.0)
 
-file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cc)
+file(GLOB SOURCES ${PROJECT_SOURCE_DIR}/src/*.cc ${PROJECT_SOURCE_DIR}/src/*.cpp)
 
 add_executable(ndppd ${SOURCES})
 target_include_directories(ndppd PUBLIC ${LIBNL3_INCLUDE_DIRS} ${LIBNL3_ROUTE_INCLUDE_DIRS})

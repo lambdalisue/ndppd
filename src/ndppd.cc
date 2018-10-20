@@ -31,6 +31,9 @@
 #include "ndppd.h"
 #include "route.h"
 
+#include "netlink.h"
+#include "socket.h"
+
 using namespace ndppd;
 
 static int daemonize()
@@ -377,8 +380,12 @@ int main(int argc, char* argv[], char* env[])
 #ifdef WITH_ND_NETLINK
     netlink_setup();
 #endif
+    auto nl = Netlink::create();
+    nl->test();
 
     while (running) {
+        Socket::poll();
+
         if (iface::poll_all() < 0) {
             if (running) {
                 logger::error() << "iface::poll_all() failed";
@@ -408,6 +415,7 @@ int main(int argc, char* argv[], char* env[])
 #ifdef WITH_ND_NETLINK
     netlink_teardown();
 #endif
+
 
     logger::notice() << "Bye";
 
