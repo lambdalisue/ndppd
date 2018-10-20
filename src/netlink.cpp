@@ -70,7 +70,7 @@ void Netlink::test() const {
         auto rta_len = RTM_PAYLOAD(nh);
 
         for (; RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
-            RTA_IIF
+
 
             if (rta->rta_type == RTA_DST) {
                 std::cout << address(*(in6_addr *)RTA_DATA(rta)).to_string() << std::endl;

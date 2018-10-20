@@ -28,7 +28,7 @@
 
 #include "logger.h"
 #include "conf.h"
-#include "address.h"
+#include "address_old.h"
 
 #include "iface.h"
 #include "proxy.h"

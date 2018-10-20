@@ -28,7 +28,7 @@
 #include <arpa/inet.h>
 
 #include "ndppd.h"
-#include "address.h"
+#include "address_old.h"
 #include "route.h"
 
 NDPPD_NS_BEGIN

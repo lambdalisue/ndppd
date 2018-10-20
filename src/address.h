@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011-2018  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,82 +13,31 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #pragma once
 
-#include <string>
-#include <list>
-#include <netinet/ip6.h>
+namespace ndppd {
+    class Address {
+    public:
+        Address();
 
-#include "ndppd.h"
+        explicit Address(const in6_addr &addr);
 
-NDPPD_NS_BEGIN
+        explicit Address(const std::string &address);
 
-class iface;
+        const in6_addr &c_addr() const;
 
-class route;
+        in6_addr &addr();
 
-class address {
-public:
-    address();
-    address(const address& addr);
-    address(const std::shared_ptr<address>& addr);
-    address(const std::string& str);
-    address(const char* str);
-    address(const in6_addr& addr);
-    address(const in6_addr& addr, const in6_addr& mask);
-    address(const in6_addr& addr, int prefix);
-    
-    static void update(int elapsed_time);
+        bool is_unicast() const;
 
-    static int ttl();
+        bool is_multicast() const;
 
-    static void ttl(int ttl);
+        std::string to_string() const;
 
-    struct in6_addr& addr();
+        bool operator==(const Address &address) const;
 
-    const struct in6_addr& const_addr() const;
-
-    struct in6_addr& mask();
-
-    // Compare _a/_m against a._a.
-    bool operator==(const address& addr) const;
-
-    bool operator!=(const address& addr) const;
-
-    void reset();
-    
-    bool is_empty() const;
-
-    const std::string to_string() const;
-
-    bool parse_string(const std::string& str);
-
-    int prefix() const;
-
-    void prefix(int n);
-
-    bool is_unicast() const;
-
-    bool is_multicast() const;
-
-    operator std::string() const;
-    
-    static void add(const address& addr, const std::string& ifname);
-    
-    static void load(const std::string& path);
-    
-    static std::list<std::shared_ptr<route> >::iterator addresses_begin();
-    
-    static std::list<std::shared_ptr<route> >::iterator addresses_end();
-
-private:
-    static int _ttl;
-
-    static int _c_ttl;
-    
-    static std::list<std::shared_ptr<route> > _addresses;
-    
-    struct in6_addr _addr, _mask;
-};
-
-NDPPD_NS_END
+    private:
+        in6_addr _addr;
+    };
+}
