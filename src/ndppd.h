@@ -34,4 +34,3 @@
 #include "proxy.h"
 #include "session.h"
 #include "rule.h"
-#include "nd-netlink.h"
