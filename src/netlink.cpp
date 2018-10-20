@@ -26,8 +26,10 @@
 
 using namespace ndppd;
 
-static void handler(Socket& socket) {
+namespace {
+    static void handler(Socket& socket) {
 
+    }
 }
 
 std::unique_ptr<Netlink> Netlink::create() {
@@ -54,7 +56,7 @@ void Netlink::test() const {
     char buf[1024];
 
     sockaddr_nl sa{};
-    auto len = _socket->recvmsg(sa, buf, sizeof(buf), MSG_WAITALL);
+    auto len = _socket->recvmsg(sa, buf, sizeof(buf), true);
     if (len < 0)
         throw std::system_error(errno, std::generic_category());
 
@@ -70,8 +72,6 @@ void Netlink::test() const {
         auto rta_len = RTM_PAYLOAD(nh);
 
         for (; RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
-
-
             if (rta->rta_type == RTA_DST) {
                 std::cout << address(*(in6_addr *)RTA_DATA(rta)).to_string() << std::endl;
             }

@@ -39,8 +39,6 @@ namespace ndppd {
 
         ~Socket();
 
-        void set_blocking(bool blocking) const;
-
         template<typename T>
         void bind(const T &sa) const {
             if ((::bind(_fd, (const sockaddr *) &sa, sizeof(T))) < 0)
@@ -48,19 +46,19 @@ namespace ndppd {
         }
 
         template<typename T>
-        ssize_t recvmsg(T &sa, void *msg, size_t size, int flags = 0) const {
+        ssize_t recvmsg(T &sa, void *msg, size_t size, bool wait = false) const {
             assert(msg != nullptr);
             iovec iov = {msg, size};
             msghdr mhdr = {&sa, sizeof(sa), &iov, 1};
-            return ::recvmsg(_fd, &mhdr, flags);
+            return ::recvmsg(_fd, &mhdr, wait ? 0 : MSG_DONTWAIT);
         }
 
         template<typename T>
-        ssize_t sendmsg(const T &sa, const void *msg, size_t size, int flags = 0) const {
+        ssize_t sendmsg(const T &sa, const void *msg, size_t size, bool wait = true) const {
             assert(msg != nullptr);
             iovec iov = {(void *) msg, size};
             msghdr mhdr = {(void *) &sa, sizeof(sa), &iov, 1, nullptr, 0, 0};
-            return ::sendmsg(_fd, &mhdr, flags);
+            return ::sendmsg(_fd, &mhdr, wait ? 0 : MSG_DONTWAIT);
         }
     };
 }

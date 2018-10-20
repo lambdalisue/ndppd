@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <cassert>
 #include <vector>
+#include <set>
 #include <poll.h>
 #include <algorithm>
 #include <iostream>
@@ -28,8 +29,11 @@
 
 using namespace ndppd;
 
-static std::vector<pollfd> pollfds;
-static std::vector<Socket *> sockets;
+namespace {
+    bool pollfds_dirty;
+    std::vector<pollfd> pollfds;
+    std::set<Socket *> sockets;
+}
 
 std::unique_ptr<Socket> Socket::create(int domain, int type, int protocol) {
     return std::unique_ptr<Socket>(new Socket(domain, type, protocol));
@@ -37,6 +41,17 @@ std::unique_ptr<Socket> Socket::create(int domain, int type, int protocol) {
 
 void Socket::poll() {
     int len;
+
+    if (pollfds_dirty) {
+        pollfds.resize(sockets.size());
+
+        std::transform(sockets.cbegin(), sockets.cend(), pollfds.begin(),
+                       [](const Socket *socket) {
+                           return (pollfd) {socket->_fd, POLLIN};
+                       });
+
+        pollfds_dirty = false;
+    }
 
     if ((len = ::poll(&pollfds[0], pollfds.size(), 50)) < 0)
         throw std::system_error(errno, std::generic_category());
@@ -55,26 +70,14 @@ Socket::Socket(int domain, int type, int protocol) : _handler(nullptr) {
     // Create the socket.
     if ((_fd = ::socket(domain, type, protocol)) < 0)
         throw std::system_error(errno, std::generic_category());
-    sockets.push_back(this);
-    pollfds.push_back((pollfd) {_fd, POLLIN, 0});
+    sockets.insert(this);
+    pollfds_dirty = true;
 }
 
 Socket::~Socket() {
     ::close(_fd);
-
-    pollfds.erase(std::remove_if(pollfds.begin(), pollfds.end(),
-                                 [this](const pollfd &pfd) { return pfd.fd == this->_fd; }), pollfds.end());
-
-    sockets.erase(std::remove(sockets.begin(), sockets.end(), this), sockets.end());
-}
-
-void Socket::set_blocking(bool blocking) const {
-    int flags;
-
-    if ((flags = fcntl(_fd, F_GETFL, 0)) == -1)
-        throw std::system_error(errno, std::generic_category(), "Socket::set_blocking");
-    if (fcntl(_fd, F_SETFL, blocking ? (flags & ~O_NONBLOCK) : (flags | O_NONBLOCK)) == -1)
-        throw std::system_error(errno, std::generic_category(), "Socket::set_blocking");
+    sockets.erase(this);
+    pollfds_dirty = true;
 }
 
 
