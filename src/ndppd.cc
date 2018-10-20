@@ -40,7 +40,7 @@ static int daemonize()
 {
     pid_t pid = fork();
     if (pid < 0) {
-        logger::error() << "Failed to fork during daemonize: " << logger::err();
+        Logger::error() << "Failed to fork during daemonize: " << Logger::err();
         return -1;
     }
 
@@ -51,12 +51,12 @@ static int daemonize()
 
     pid_t sid = setsid();
     if (sid < 0) {
-        logger::error() << "Failed to setsid during daemonize: " << logger::err();
+        Logger::error() << "Failed to setsid during daemonize: " << Logger::err();
         return -1;
     }
 
     if (chdir("/") < 0) {
-        logger::error() << "Failed to change path during daemonize: " << logger::err();
+        Logger::error() << "Failed to change path during daemonize: " << Logger::err();
         return -1;
     }
 
@@ -82,7 +82,7 @@ static std::shared_ptr<conf> load_config(const std::string& path)
         std::shared_ptr<conf> pr_cf = *p_it;
 
         if (pr_cf->empty()) {
-            logger::error() << "'proxy' section is missing interface name";
+            Logger::error() << "'proxy' section is missing interface name";
             return {};
         }
 
@@ -94,7 +94,7 @@ static std::shared_ptr<conf> load_config(const std::string& path)
             std::shared_ptr<conf> ru_cf =* r_it;
 
             if (ru_cf->empty()) {
-                logger::error() << "'rule' is missing an IPv6 address/net";
+                Logger::error() << "'rule' is missing an IPv6 address/net";
                 return {};
             }
 
@@ -102,29 +102,29 @@ static std::shared_ptr<conf> load_config(const std::string& path)
 
             if (x_cf = ru_cf->find("iface")) {
                 if (ru_cf->find("static") || ru_cf->find("auto")) {
-                    logger::error()
+                    Logger::error()
                         << "Only one of 'iface', 'auto' and 'static' may "
                         << "be specified.";
                     return {};
                 }
                 if ((const std::string&)*x_cf == "") {
-                    logger::error() << "'iface' expected an interface name";
+                    Logger::error() << "'iface' expected an interface name";
                     return {};
                 }
             } else if (ru_cf->find("static")) {
                 if (ru_cf->find("auto")) {
-                    logger::error()
+                    Logger::error()
                         << "Only one of 'iface', 'auto' and 'static' may "
                         << "be specified.";
                     return {};
                 }
                 if (addr.prefix() <= 120) {
-                    logger::warning()
+                    Logger::warning()
                         << "Low prefix length (" << addr.prefix()
                         << " <= 120) when using 'static' method";
                 }
             } else if (!ru_cf->find("auto")) {
-                logger::error()
+                Logger::error()
                     << "You must specify either 'iface', 'auto' or "
                     << "'static'";
                 return {};
@@ -246,40 +246,40 @@ static bool configure(std::shared_ptr<conf>& cf)
     for (std::map<std::string, std::weak_ptr<iface> >::iterator i_it = iface::_map.begin(); i_it != iface::_map.end(); i_it++) {
         std::shared_ptr<iface> ifa = i_it->second.lock();
         
-        logger::debug() << "iface " << ifa->name() << " {";
+        Logger::debug() << "iface " << ifa->name() << " {";
         
         for (std::list<std::weak_ptr<proxy> >::iterator pit = ifa->serves_begin(); pit != ifa->serves_end(); pit++) {
             std::shared_ptr<proxy> pr = pit->lock();
             if (!pr) continue;
 
-            logger::debug() << "  " << "proxy " << logger::format("%x", pr.get()) << " {";
+            Logger::debug() << "  " << "proxy " << Logger::format("%x", pr.get()) << " {";
             
              for (std::list<std::shared_ptr<rule> >::iterator rit = pr->rules_begin(); rit != pr->rules_end(); rit++) {
                 std::shared_ptr<rule> ru = *rit;
                 
-                logger::debug() << "    " << "rule " << logger::format("%x", ru.get()) << " {";
-                logger::debug() << "      " << "taddr " << ru->addr()<< ";";
+                Logger::debug() << "    " << "rule " << Logger::format("%x", ru.get()) << " {";
+                Logger::debug() << "      " << "taddr " << ru->addr()<< ";";
                 if (ru->is_auto())
-                    logger::debug() << "      " << "auto;";
+                    Logger::debug() << "      " << "auto;";
                 else if (!ru->daughter())
-                    logger::debug() << "      " << "static;";
+                    Logger::debug() << "      " << "static;";
                 else
-                    logger::debug() << "      " << "iface " << ru->daughter()->name() << ";";
-                logger::debug() << "    }";
+                    Logger::debug() << "      " << "iface " << ru->daughter()->name() << ";";
+                Logger::debug() << "    }";
              }
             
-            logger::debug() << "  }";
+            Logger::debug() << "  }";
         }
         
-        logger::debug() << "  " << "parents {";
+        Logger::debug() << "  " << "parents {";
         for (std::list<std::weak_ptr<proxy> >::iterator pit = ifa->parents_begin(); pit != ifa->parents_end(); pit++) {
             std::shared_ptr<proxy> pr = pit->lock();
             
-            logger::debug() << "    " << "parent " << logger::format("%x", pr.get()) << ";";
+            Logger::debug() << "    " << "parent " << Logger::format("%x", pr.get()) << ";";
         }
-        logger::debug() << "  }";
+        Logger::debug() << "  }";
         
-        logger::debug() << "}";
+        Logger::debug() << "}";
     }
     
     return true;
@@ -289,7 +289,7 @@ static bool running = true;
 
 static void exit_ndppd(int sig)
 {
-    logger::error() << "Shutting down...";
+    Logger::error() << "Shutting down...";
     running = 0;
 }
 
@@ -333,7 +333,7 @@ int main(int argc, char* argv[], char* env[])
             break;
 
         case 'v':
-            logger::verbosity(logger::verbosity() + 1);
+            Logger::verbosity((LogLevel)((int) Logger::verbosity() + 1));
             /*if (optarg) {
                 if (!logger::verbosity(optarg))
                     logger::error() << "Unknown verbosity level '" << optarg << "'";
@@ -344,8 +344,8 @@ int main(int argc, char* argv[], char* env[])
         }
     }
 
-    logger::notice()
-        << "ndppd (NDP Proxy Daemon) version " NDPPD_VERSION << logger::endl
+    Logger::notice()
+        << "ndppd (NDP Proxy Daemon) version " NDPPD_VERSION << Logger::endl
         << "Using configuration file '" << config_path << "'";
 
     // Load configuration.
@@ -358,7 +358,7 @@ int main(int argc, char* argv[], char* env[])
         return -1;
 
     if (daemon) {
-        logger::syslog(true);
+        Logger::syslog(true);
 
         if (daemonize() < 0)
             return 1;
@@ -388,7 +388,7 @@ int main(int argc, char* argv[], char* env[])
 
         if (iface::poll_all() < 0) {
             if (running) {
-                logger::error() << "iface::poll_all() failed";
+                Logger::error() << "iface::poll_all() failed";
             }
             break;
         }
@@ -417,7 +417,7 @@ int main(int argc, char* argv[], char* env[])
 #endif
 
 
-    logger::notice() << "Bye";
+    Logger::notice() << "Bye";
 
     return 0;
 }

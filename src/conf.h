@@ -35,7 +35,7 @@ private:
 
     std::multimap<std::string, std::shared_ptr<conf> > _map;
 
-    void dump(logger& l, int level) const;
+    void dump(Logger& l, int level) const;
 
     static const char* skip(const char* str, bool all = true);
 
@@ -67,7 +67,7 @@ public:
 
     std::shared_ptr<conf> find(const std::string& name, int index = 0) const;
 
-    void dump(int pri = LOG_INFO) const;
+    void dump(LogLevel logLevel = LogLevel::Info) const;
 
     operator const std::string&();
 

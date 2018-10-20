@@ -57,7 +57,7 @@ std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const addre
     if_add_to_list(ifindex, ifa);
 #endif
 
-    logger::debug() << "rule::create() if=" << pr->ifa()->name() << ", slave=" << ifa->name() << ", addr=" << addr;
+    Logger::debug() << "rule::create() if=" << pr->ifa()->name() << ", slave=" << ifa->name() << ", addr=" << addr;
 
     return ru;
 }
@@ -74,7 +74,7 @@ std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const addre
     if (aut == false)
         _any_static = true;
 
-    logger::debug()
+    Logger::debug()
         << "rule::create() if=" << pr->ifa()->name().c_str() << ", addr=" << addr
         << ", auto=" << (aut ? "yes" : "no");
 

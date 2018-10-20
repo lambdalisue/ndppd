@@ -366,7 +366,7 @@ void address::load(const std::string& path)
     std::list<std::shared_ptr<route> > tmp_addresses(_addresses);
     _addresses.clear();
 
-    logger::debug() << "reading IP addresses";
+    Logger::debug() << "reading IP addresses";
 
     try {
         std::ifstream ifs;
@@ -380,14 +380,14 @@ void address::load(const std::string& path)
 
             if (ifs.gcount() < 53) {
                 if (ifs.gcount() > 0)
-                    logger::debug() << "skipping entry (size=" << ifs.gcount() << ")";
+                    Logger::debug() << "skipping entry (size=" << ifs.gcount() << ")";
                 continue;
             }
 
             address addr;
 
             if (route::hexdec(buf, (unsigned char* )&addr.addr(), 16) != 16) {
-                logger::warning() << "failed to load address (" << buf << ")";
+                Logger::warning() << "failed to load address (" << buf << ")";
                 continue;
             }
             
@@ -397,14 +397,14 @@ void address::load(const std::string& path)
 
             address::add(addr, iface);
             
-            logger::debug() << "found local addr=" << addr << ", iface=" << iface;
+            Logger::debug() << "found local addr=" << addr << ", iface=" << iface;
         }
     } catch (std::ifstream::failure e) {
-        logger::warning() << "Failed to parse IPv6 address data from '" << path << "'";
-        logger::error() << e.what();
+        Logger::warning() << "Failed to parse IPv6 address data from '" << path << "'";
+        Logger::error() << e.what();
     }
     
-    logger::debug() << "completed IP addresses load";
+    Logger::debug() << "completed IP addresses load";
 }
 
 void address::update(int elapsed_time)

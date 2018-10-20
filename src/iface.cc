@@ -57,7 +57,7 @@ iface::iface() :
 
 iface::~iface()
 {
-    logger::debug() << "iface::~iface()";
+    Logger::debug() << "iface::~iface()";
 
     if (_ifd >= 0)
         close(_ifd);
@@ -100,7 +100,7 @@ std::shared_ptr<iface> iface::open_pfd(const std::string& name, bool promiscuous
     // Create a socket.
 
     if ((fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_IPV6))) < 0) {
-        logger::error() << "Unable to create socket";
+        Logger::error() << "Unable to create socket";
         return std::shared_ptr<iface>();
     }
 
@@ -114,13 +114,13 @@ std::shared_ptr<iface> iface::open_pfd(const std::string& name, bool promiscuous
 
     if (!(lladdr.sll_ifindex = if_nametoindex(name.c_str()))) {
         close(fd);
-        logger::error() << "Failed to bind to interface '" << name << "'";
+        Logger::error() << "Failed to bind to interface '" << name << "'";
         return std::shared_ptr<iface>();
     }
 
     if (bind(fd, (struct sockaddr* )&lladdr, sizeof(struct sockaddr_ll)) < 0) {
         close(fd);
-        logger::error() << "Failed to bind to interface '" << name << "'";
+        Logger::error() << "Failed to bind to interface '" << name << "'";
         return std::shared_ptr<iface>();
     }
 
@@ -130,7 +130,7 @@ std::shared_ptr<iface> iface::open_pfd(const std::string& name, bool promiscuous
 
     if (ioctl(fd, FIONBIO, (char* )&on) < 0) {
         close(fd);
-        logger::error() << "Failed to switch to non-blocking on interface '" << name << "'";
+        Logger::error() << "Failed to switch to non-blocking on interface '" << name << "'";
         return std::shared_ptr<iface>();
     }
 
@@ -164,7 +164,7 @@ std::shared_ptr<iface> iface::open_pfd(const std::string& name, bool promiscuous
     };
 
     if (setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0) {
-        logger::error() << "Failed to set filter";
+        Logger::error() << "Failed to set filter";
         return std::shared_ptr<iface>();
     }
 
@@ -201,7 +201,7 @@ std::shared_ptr<iface> iface::open_ifd(const std::string& name)
     // Create a socket.
 
     if ((fd = socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6)) < 0) {
-        logger::error() << "Unable to create socket";
+        Logger::error() << "Unable to create socket";
         return std::shared_ptr<iface>();
     }
 
@@ -215,7 +215,7 @@ std::shared_ptr<iface> iface::open_ifd(const std::string& name)
 
     if (setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE,& ifr, sizeof(ifr)) < 0) {
         close(fd);
-        logger::error() << "Failed to bind to interface '" << name << "'";
+        Logger::error() << "Failed to bind to interface '" << name << "'";
         return std::shared_ptr<iface>();
     }
 
@@ -227,13 +227,13 @@ std::shared_ptr<iface> iface::open_ifd(const std::string& name)
 
     if (ioctl(fd, SIOCGIFHWADDR,& ifr) < 0) {
         close(fd);
-        logger::error()
+        Logger::error()
             << "Failed to detect link-layer address for interface '"
             << name << "'";
         return std::shared_ptr<iface>();
     }
 
-    logger::debug()
+    Logger::debug()
         << "fd=" << fd << ", hwaddr="
         << ether_ntoa((const struct ether_addr* )&ifr.ifr_hwaddr.sa_data);
 
@@ -244,14 +244,14 @@ std::shared_ptr<iface> iface::open_ifd(const std::string& name)
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &hops,
                    sizeof(hops)) < 0) {
         close(fd);
-        logger::error() << "iface::open_ifd() failed IPV6_MULTICAST_HOPS";
+        Logger::error() << "iface::open_ifd() failed IPV6_MULTICAST_HOPS";
         return std::shared_ptr<iface>();
     }
 
     if (setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &hops,
                    sizeof(hops)) < 0) {
         close(fd);
-        logger::error() << "iface::open_ifd() failed IPV6_UNICAST_HOPS";
+        Logger::error() << "iface::open_ifd() failed IPV6_UNICAST_HOPS";
         return std::shared_ptr<iface>();
     }
 
@@ -261,7 +261,7 @@ std::shared_ptr<iface> iface::open_ifd(const std::string& name)
 
     if (ioctl(fd, FIONBIO, (char*)&on) < 0) {
         close(fd);
-        logger::error()
+        Logger::error()
             << "Failed to switch to non-blocking on interface '"
             << name << "'";
         return std::shared_ptr<iface>();
@@ -274,7 +274,7 @@ std::shared_ptr<iface> iface::open_ifd(const std::string& name)
     ICMP6_FILTER_SETPASS(ND_NEIGHBOR_ADVERT, &filter);
 
     if (setsockopt(fd, IPPROTO_ICMPV6, ICMP6_FILTER,& filter, sizeof(filter)) < 0) {
-        logger::error() << "Failed to set filter";
+        Logger::error() << "Failed to set filter";
         return std::shared_ptr<iface>();
     }
 
@@ -319,11 +319,11 @@ ssize_t iface::read(int fd, struct sockaddr* saddr, ssize_t saddr_size, uint8_t*
     
     if ((len = recvmsg(fd,& mhdr, 0)) < 0)
     {
-        logger::error() << "iface::read() failed! error=" << logger::err() << ", ifa=" << name();
+        Logger::error() << "iface::read() failed! error=" << Logger::err() << ", ifa=" << name();
         return -1;
     }
     
-    logger::debug() << "iface::read() ifa=" << name() << ", len=" << len;
+    Logger::debug() << "iface::read() ifa=" << name() << ", len=" << len;
 
     if (len < sizeof(struct icmp6_hdr))
         return -1;
@@ -351,14 +351,14 @@ ssize_t iface::write(int fd, const address& daddr, const uint8_t* msg, size_t si
     mhdr.msg_iov =& iov;
     mhdr.msg_iovlen = 1;
 
-    logger::debug() << "iface::write() ifa=" << name() << ", daddr=" << daddr.to_string() << ", len="
+    Logger::debug() << "iface::write() ifa=" << name() << ", daddr=" << daddr.to_string() << ", len="
                     << size;
 
     int len;
 
     if ((len = sendmsg(fd,& mhdr, 0)) < 0)
     {
-        logger::error() << "iface::write() failed! error=" << logger::err() << ", ifa=" << name() << ", daddr=" << daddr.to_string();
+        Logger::error() << "iface::write() failed! error=" << Logger::err() << ", ifa=" << name() << ", daddr=" << daddr.to_string();
         return -1;
     }
 
@@ -372,7 +372,7 @@ ssize_t iface::read_solicit(address& saddr, address& daddr, address& taddr)
     ssize_t len;
 
     if ((len = read(_pfd, (struct sockaddr*)&t_saddr, sizeof(struct sockaddr_ll), msg, sizeof(msg))) < 0) {
-        logger::warning() << "iface::read_solicit() failed: " << logger::err();
+        Logger::warning() << "iface::read_solicit() failed: " << Logger::err();
         return -1;
     }
 
@@ -391,7 +391,7 @@ ssize_t iface::read_solicit(address& saddr, address& daddr, address& taddr)
         return 0;
     }
 
-    logger::debug() << "iface::read_solicit() saddr=" << saddr.to_string()
+    Logger::debug() << "iface::read_solicit() saddr=" << saddr.to_string()
                     << ", daddr=" << daddr.to_string() << ", taddr=" << taddr.to_string() << ", len=" << len;
 
     return len;
@@ -430,7 +430,7 @@ ssize_t iface::write_solicit(const address& taddr)
     daddr.addr().s6_addr[14] = taddr.const_addr().s6_addr[14];
     daddr.addr().s6_addr[15] = taddr.const_addr().s6_addr[15];
 
-    logger::debug() << "iface::write_solicit() taddr=" << taddr.to_string()
+    Logger::debug() << "iface::write_solicit() taddr=" << taddr.to_string()
                     << ", daddr=" << daddr.to_string();
 
     return write(_ifd, daddr, (uint8_t* )buf, sizeof(struct nd_neighbor_solicit)
@@ -460,7 +460,7 @@ ssize_t iface::write_advert(const address& daddr, const address& taddr, bool rou
     memcpy(buf + sizeof(struct nd_neighbor_advert) + sizeof(struct nd_opt_hdr),
            &hwaddr, 6);
 
-    logger::debug() << "iface::write_advert() daddr=" << daddr.to_string()
+    Logger::debug() << "iface::write_advert() daddr=" << daddr.to_string()
                     << ", taddr=" << taddr.to_string();
 
     return write(_ifd, daddr, (uint8_t* )buf, sizeof(struct nd_neighbor_advert) +
@@ -478,7 +478,7 @@ ssize_t iface::read_advert(address& saddr, address& taddr)
     t_saddr.sin6_port   = htons(IPPROTO_ICMPV6); // Needed?
 
     if ((len = read(_ifd, (struct sockaddr* )&t_saddr, sizeof(struct sockaddr_in6), msg, sizeof(msg))) < 0) {
-        logger::warning() << "iface::read_advert() failed: " << logger::err();
+        Logger::warning() << "iface::read_advert() failed: " << Logger::err();
         return -1;
     }
 
@@ -494,7 +494,7 @@ ssize_t iface::read_advert(address& saddr, address& taddr)
 
     taddr = ((struct nd_neighbor_solicit* )msg)->nd_ns_target;
 
-    logger::debug() << "iface::read_advert() saddr=" << saddr.to_string() << ", taddr=" << taddr.to_string() << ", len=" << len;
+    Logger::debug() << "iface::read_advert() saddr=" << saddr.to_string() << ", taddr=" << taddr.to_string() << ", len=" << len;
 
     return len;
 }
@@ -529,7 +529,7 @@ bool iface::handle_local(const address& saddr, const address& taddr)
 
                     if (ru->daughter() && ru->daughter()->name() == (*ad)->ifname())
                     {
-                        logger::debug() << "proxy::handle_solicit() found local taddr=" << taddr;
+                        Logger::debug() << "proxy::handle_solicit() found local taddr=" << taddr;
                         write_advert(saddr, taddr, false);
                         return true;
                     }
@@ -546,7 +546,7 @@ void iface::handle_reverse_advert(const address& saddr, const std::string& ifnam
     if (!saddr.is_unicast())
         return;
     
-    logger::debug()
+    Logger::debug()
         << "proxy::handle_reverse_advert()";
     
     // Loop through all the parents that forward new NDP soliciation requests to this interface
@@ -565,7 +565,7 @@ void iface::handle_reverse_advert(const address& saddr, const std::string& ifnam
             if (ru->addr() == saddr &&
                 ru->daughter()->name() == ifname)
             {
-                logger::debug() << " - generating artifical advertisement: " << ifname;
+                Logger::debug() << " - generating artifical advertisement: " << ifname;
                 parent->handle_stateless_advert(saddr, saddr, ifname, ru->autovia());
             }
         }
@@ -578,7 +578,7 @@ void iface::fixup_pollfds()
 
     int i = 0;
 
-    logger::debug() << "iface::fixup_pollfds() _map.size()=" << _map.size();
+    Logger::debug() << "iface::fixup_pollfds() _map.size()=" << _map.size();
 
     for (std::map<std::string, std::weak_ptr<iface> >::iterator it = _map.begin();
             it != _map.end(); it++) {
@@ -628,7 +628,7 @@ int iface::poll_all()
     int len;
 
     if ((len = ::poll(&_pollfds[0], _pollfds.size(), 50)) < 0) {
-        logger::error() << "Failed to poll interfaces: " << logger::err();
+        Logger::error() << "Failed to poll interfaces: " << Logger::err();
         return -1;
     }
 
@@ -662,11 +662,11 @@ int iface::poll_all()
         if (is_pfd) {
             size = ifa->read_solicit(saddr, daddr, taddr);
             if (size < 0) {
-                logger::error() << "Failed to read from interface '%s'", ifa->_name.c_str();
+                Logger::error() << "Failed to read from interface '%s'", ifa->_name.c_str();
                 continue;
             } 
             if (size == 0) {
-                logger::debug() << "iface::read_solicit() loopback received and ignored";
+                Logger::debug() << "iface::read_solicit() loopback received and ignored";
                 continue;
             }
             
@@ -695,17 +695,17 @@ int iface::poll_all()
             
             // If it was not handled then write an error message
             if (handled == false) {
-                logger::debug() << " - solicit was ignored";
+                Logger::debug() << " - solicit was ignored";
             }
             
         } else {
             size = ifa->read_advert(saddr, taddr);
             if (size < 0) {
-                logger::error() << "Failed to read from interface '%s'", ifa->_name.c_str();
+                Logger::error() << "Failed to read from interface '%s'", ifa->_name.c_str();
                 continue;
             }
             if (size == 0) {
-                logger::debug() << "iface::read_advert() loopback received and ignored";
+                Logger::debug() << "iface::read_advert() loopback received and ignored";
                 continue;
             }
             
@@ -734,7 +734,7 @@ int iface::poll_all()
                     }
                 }
                 if (is_relevant == false) {
-                    logger::debug() << "iface::read_advert() advert is not for " << ifa->name() << "...skipping";
+                    Logger::debug() << "iface::read_advert() advert is not for " << ifa->name() << "...skipping";
                     continue;
                 }
                 
@@ -745,7 +745,7 @@ int iface::poll_all()
             
             // If it was not handled then write an error message
             if (handled == false) {
-                logger::debug() << " - advert was ignored";
+                Logger::debug() << " - advert was ignored";
             }
         }
     }
@@ -757,7 +757,7 @@ int iface::allmulti(int state)
 {
     struct ifreq ifr;
 
-    logger::debug()
+    Logger::debug()
         << "iface::allmulti() state="
         << state << ", _name=\"" << _name << "\"";
 
@@ -768,7 +768,7 @@ int iface::allmulti(int state)
     strncpy(ifr.ifr_name, _name.c_str(), IFNAMSIZ);
 
     if (ioctl(_pfd, SIOCGIFFLAGS, &ifr) < 0) {
-        logger::error() << "Failed to get allmulti: " << logger::err();
+        Logger::error() << "Failed to get allmulti: " << Logger::err();
         return -1;
     }
 
@@ -785,7 +785,7 @@ int iface::allmulti(int state)
     }
 
     if (ioctl(_pfd, SIOCSIFFLAGS, &ifr) < 0) {
-        logger::error() << "Failed to set allmulti: " << logger::err();
+        Logger::error() << "Failed to set allmulti: " << Logger::err();
         return -1;
     }
 
@@ -796,7 +796,7 @@ int iface::promiscuous(int state)
 {
     struct ifreq ifr;
 
-    logger::debug()
+    Logger::debug()
         << "iface::promiscuous() state="
         << state << ", _name=\"" << _name << "\"";
 
@@ -807,7 +807,7 @@ int iface::promiscuous(int state)
     strncpy(ifr.ifr_name, _name.c_str(), IFNAMSIZ);
 
     if (ioctl(_pfd, SIOCGIFFLAGS, &ifr) < 0) {
-        logger::error() << "Failed to get promiscuous: " << logger::err();
+        Logger::error() << "Failed to get promiscuous: " << Logger::err();
         return -1;
     }
 
@@ -824,7 +824,7 @@ int iface::promiscuous(int state)
     }
 
     if (ioctl(_pfd, SIOCSIFFLAGS, &ifr) < 0) {
-        logger::error() << "Failed to set promiscuous: " << logger::err();
+        Logger::error() << "Failed to set promiscuous: " << Logger::err();
         return -1;
     }
 

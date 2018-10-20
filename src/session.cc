@@ -51,7 +51,7 @@ void session::update_all(int elapsed_time)
             
         case session::WAITING:
             if (se->_fails < se->_retries) {
-                logger::debug() << "session will keep trying [taddr=" << se->_taddr << "]";
+                Logger::debug() << "session will keep trying [taddr=" << se->_taddr << "]";
                 
                 se->_ttl     = se->_pr.lock()->timeout();
                 se->_fails++;
@@ -60,7 +60,7 @@ void session::update_all(int elapsed_time)
                 se->send_solicit();
             } else {
                 
-                logger::debug() << "session is now invalid [taddr=" << se->_taddr << "]";
+                Logger::debug() << "session is now invalid [taddr=" << se->_taddr << "]";
                 
                 se->_status = session::INVALID;
                 se->_ttl    = pr->deadtime();
@@ -68,7 +68,7 @@ void session::update_all(int elapsed_time)
             break;
             
         case session::RENEWING:
-            logger::debug() << "session is became invalid [taddr=" << se->_taddr << "]";
+            Logger::debug() << "session is became invalid [taddr=" << se->_taddr << "]";
             
             if (se->_fails < se->_retries) {
                 se->_ttl     = pr->timeout();
@@ -85,7 +85,7 @@ void session::update_all(int elapsed_time)
             if (se->touched() == true ||
                 se->keepalive() == true)
             {
-                logger::debug() << "session is renewing [taddr=" << se->_taddr << "]";
+                Logger::debug() << "session is renewing [taddr=" << se->_taddr << "]";
                 se->_status  = session::RENEWING;
                 se->_ttl     = pr->timeout();
                 se->_fails   = 0;
@@ -106,7 +106,7 @@ void session::update_all(int elapsed_time)
 
 session::~session()
 {
-    logger::debug() << "session::~session() this=" << logger::format("%x", this);
+    Logger::debug() << "session::~session() this=" << Logger::format("%x", this);
     
     if (_wired == true) {
         for (std::list<std::shared_ptr<iface> >::iterator it = _ifaces.begin();
@@ -132,9 +132,9 @@ std::shared_ptr<session> session::create(const std::shared_ptr<proxy>& pr, const
 
     _sessions.push_back(se);
 
-    logger::debug()
-        << "session::create() pr=" << logger::format("%x", (proxy* )pr.get()) << ", proxy=" << ((pr->ifa()) ? pr->ifa()->name() : "null")
-        << ", taddr=" << taddr << " =" << logger::format("%x", (session* )se.get());
+    Logger::debug()
+        << "session::create() pr=" << Logger::format("%x", (proxy* )pr.get()) << ", proxy=" << ((pr->ifa()) ? pr->ifa()->name() : "null")
+        << ", taddr=" << taddr << " =" << Logger::format("%x", (session* )se.get());
 
     return se;
 }
@@ -159,11 +159,11 @@ void session::add_pending(const address& addr)
 
 void session::send_solicit()
 {
-    logger::debug() << "session::send_solicit() (_ifaces.size() = " << _ifaces.size() << ")";
+    Logger::debug() << "session::send_solicit() (_ifaces.size() = " << _ifaces.size() << ")";
 
     for (std::list<std::shared_ptr<iface> >::iterator it = _ifaces.begin();
             it != _ifaces.end(); it++) {
-        logger::debug() << " - " << (*it)->name();
+        Logger::debug() << " - " << (*it)->name();
         (*it)->write_solicit(_taddr);
     }
 }
@@ -177,7 +177,7 @@ void session::touch()
         if (status() == session::WAITING || status() == session::INVALID) {
             _ttl = _pr.lock()->timeout();
             
-            logger::debug() << "session is now probing [taddr=" << _taddr << "]";
+            Logger::debug() << "session is now probing [taddr=" << _taddr << "]";
             
             send_solicit();
         }
@@ -195,7 +195,7 @@ void session::handle_auto_wire(const address& saddr, const std::string& ifname, 
     if (_wired == true && (_wired_via.is_empty() || _wired_via == saddr))
         return;
     
-    logger::debug()
+    Logger::debug()
         << "session::handle_auto_wire() taddr=" << _taddr << ", ifname=" << ifname;
     
     if (use_via == true &&
@@ -212,7 +212,7 @@ void session::handle_auto_wire(const address& saddr, const std::string& ifname, 
         route_cmd << " " << "dev";
         route_cmd << " " << ifname;
 
-        logger::debug()
+        Logger::debug()
             << "session::system(" << route_cmd.str() << ")";
         
         system(route_cmd.str().c_str());
@@ -236,7 +236,7 @@ void session::handle_auto_wire(const address& saddr, const std::string& ifname, 
         route_cmd << " " << "dev";
         route_cmd << " " << ifname;
 
-        logger::debug()
+        Logger::debug()
             << "session::system(" << route_cmd.str() << ")";
 
         system(route_cmd.str().c_str());
@@ -247,7 +247,7 @@ void session::handle_auto_wire(const address& saddr, const std::string& ifname, 
 
 void session::handle_auto_unwire(const std::string& ifname)
 {
-    logger::debug()
+    Logger::debug()
         << "session::handle_auto_unwire() taddr=" << _taddr << ", ifname=" << ifname;
     
     {
@@ -264,7 +264,7 @@ void session::handle_auto_unwire(const std::string& ifname)
         route_cmd << " " << "dev";
         route_cmd << " " << ifname;
 
-        logger::debug()
+        Logger::debug()
             << "session::system(" << route_cmd.str() << ")";
 
         system(route_cmd.str().c_str());
@@ -280,7 +280,7 @@ void session::handle_auto_unwire(const std::string& ifname)
         route_cmd << " " << "dev";
         route_cmd << " " << ifname;
 
-        logger::debug()
+        Logger::debug()
             << "session::system(" << route_cmd.str() << ")";
 
         system(route_cmd.str().c_str());
@@ -304,13 +304,13 @@ void session::handle_advert()
 {
     auto pr = _pr.lock();
 
-    logger::debug()
+    Logger::debug()
         << "session::handle_advert() taddr=" << _taddr << ", ttl=" << pr->ttl();
     
     if (_status != VALID) {
         _status = VALID;
         
-        logger::debug() << "session is active [taddr=" << _taddr << "]";
+        Logger::debug() << "session is active [taddr=" << _taddr << "]";
     }
     
     _ttl    = pr->ttl();
@@ -320,7 +320,7 @@ void session::handle_advert()
         for (std::list<std::shared_ptr<address> >::iterator ad = _pending.begin();
                 ad != _pending.end(); ad++) {
             std::shared_ptr<address> addr = (*ad);
-            logger::debug() << " - forward to " << *addr;
+            Logger::debug() << " - forward to " << *addr;
 
             send_advert(addr);
         }

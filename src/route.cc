@@ -85,7 +85,7 @@ void route::load(const std::string& path)
     std::list<std::shared_ptr<route> > tmp_routes(_routes);
     _routes.clear();
 
-    logger::debug() << "reading routes";
+    Logger::debug() << "reading routes";
 
     try {
         std::ifstream ifs;
@@ -120,8 +120,8 @@ void route::load(const std::string& path)
             route::create(addr, route::token(buf + 141));
         }
     } catch (std::ifstream::failure e) {
-        logger::warning() << "Failed to parse IPv6 routing data from '" << path << "'";
-        logger::error() << e.what();
+        Logger::warning() << "Failed to parse IPv6 routing data from '" << path << "'";
+        Logger::error() << e.what();
     }
 }
 
@@ -171,7 +171,7 @@ const std::string& route::ifname() const
 std::shared_ptr<iface> route::ifa()
 {
     if (!_ifa) {
-        logger::debug() << "router::ifa() opening interface '" << _ifname << "'";
+        Logger::debug() << "router::ifa() opening interface '" << _ifname << "'";
         return _ifa = iface::open_ifd(_ifname);
     }
 

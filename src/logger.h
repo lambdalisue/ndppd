@@ -17,81 +17,52 @@
 
 #include <sstream>
 
-#ifndef DISABLE_SYSLOG
-#   include <syslog.h>
-#else
-#   define LOG_EMERG   0   /* system is unusable */
-#   define LOG_ALERT   1   /* action must be taken immediately */
-#   define LOG_CRIT    2   /* critical conditions */
-#   define LOG_ERR     3   /* error conditions */
-#   define LOG_WARNING 4   /* warning conditions */
-#   define LOG_NOTICE  5   /* normal but significant condition */
-#   define LOG_INFO    6   /* informational */
-#   define LOG_DEBUG   7   /* debug-level messages */
-#endif
-
-NDPPD_NS_BEGIN
-
-class logger {
-public:
-    logger(int pri = LOG_NOTICE);
-
-    logger(const logger& l);
-
-    ~logger();
-
-    static std::string format(const std::string& fmt, ...);
-
-    static void syslog(bool enable);
-    static bool syslog();
-
-    static void max_pri(int pri);
-
-    void flush();
-
-    static bool verbosity(const std::string& name);
-
-    static int verbosity();
-
-    static void verbosity(int pri);
-
-    logger& operator<<(const std::string& str);
-    logger& operator<<(logger& (*pf)(logger& ));
-    logger& operator<<(int n);
-
-    logger& force_log(bool b = true);
-
-    static logger& endl(logger& __l);
-
-    // Shortcuts.
-
-    static logger error();
-    static logger info();
-    static logger warning();
-    static logger debug();
-    static logger notice();
-
-    static std::string err();
-
-private:
-    int _pri;
-
-    std::stringstream _ss;
-
-    bool _force_log;
-
-    struct pri_name {
-        const char* name;
-        int pri;
+namespace ndppd {
+    enum class LogLevel {
+        Error,
+        Warning,
+        Notice,
+        Info,
+        Debug
     };
 
-    static const pri_name _pri_names[];
+    class Logger {
+    public:
+        static std::string format(const char *fmt, ...);
 
-    static bool _syslog;
+#ifndef DISABLE_SYSLOG
+        static bool syslog(bool enable);
+        static bool syslog();
+#endif
+        static bool verbosity(const std::string& name);
 
-    static int _max_pri;
+        static LogLevel verbosity();
+        static void verbosity(LogLevel verbosity);
+
+        static Logger& endl(Logger& __l);
+
+        // Shortcuts.
+
+        static Logger error();
+        static Logger info();
+        static Logger warning();
+        static Logger debug();
+        static Logger notice();
+        static std::string err();
 
 
-};
+        explicit Logger(LogLevel logLevel);
+        Logger(const Logger& logger);
 
-NDPPD_NS_END
+        ~Logger();
+        Logger& operator<<(const std::string& str);
+        Logger& operator<<(Logger& (*pf)(Logger& ));
+        Logger& operator<<(int n);
+        void flush();
+
+    private:
+        LogLevel _logLevel;
+        std::stringstream _ss;
+    };
+}
+

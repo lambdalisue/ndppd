@@ -48,7 +48,7 @@ void if_add_to_list(int ifindex, const std::shared_ptr<iface>& ifa)
         }
     }
     if (!found) {
-        logger::debug() << "rule::add_iface() if=" << ifa->name();
+        Logger::debug() << "rule::add_iface() if=" << ifa->name();
         interface anInterface;
         anInterface._name = ifa->name();
         anInterface.ifindex = ifindex;
@@ -65,7 +65,7 @@ if_addr_add(int ifindex, struct in6_addr *iaddr)
          it != interfaces.end(); it++) {
         if ((*it).ifindex == ifindex) {
             address addr = address(*iaddr);
-            logger::debug() << "Adding addr " << addr.to_string();
+            Logger::debug() << "Adding addr " << addr.to_string();
             std::list<address>::iterator it_addr;
             it_addr = std::find((*it).addresses.begin(), (*it).addresses.end(), addr);
             if (it_addr == (*it).addresses.end()) {
@@ -86,7 +86,7 @@ if_addr_del(int ifindex, struct in6_addr *iaddr)
          it != interfaces.end(); it++) {
         if ((*it).ifindex == ifindex) {
             address addr = address(*iaddr);
-            logger::debug() << "Deleting addr " << addr.to_string();
+            Logger::debug() << "Deleting addr " << addr.to_string();
             (*it).addresses.remove(addr);
             break;
         }
@@ -177,14 +177,14 @@ new_addr(struct nl_object *obj, void *p)
         if_addr_add(ifindex, in_addr);
         break;
     default:
-        logger::error() << "Unknown message family: " << family;
+        Logger::error() << "Unknown message family: " << family;
     }
 }
 
 static int
 nl_msg_handler(struct nl_msg *msg, void *arg)
 {
-    logger::debug() << "nl_msg_handler";
+    Logger::debug() << "nl_msg_handler";
     struct nlmsghdr *hdr = nlmsg_hdr(msg);
 
     switch (hdr->nlmsg_type) {
@@ -195,7 +195,7 @@ nl_msg_handler(struct nl_msg *msg, void *arg)
         nl_msg_deladdr(hdr);
         break;
     default:
-        logger::error() << "Unknown message type: " << hdr->nlmsg_type;
+        Logger::error() << "Unknown message type: " << hdr->nlmsg_type;
     }
 
     return NL_OK;
@@ -256,7 +256,7 @@ netlink_setup()
     pthread_setname_np(monitor_thread, "netlink");
     if (pthread_setschedprio(monitor_thread, -10) < 0)
     {
-        logger::warning() << "setschedprio: " << strerror(errno);
+        Logger::warning() << "setschedprio: " << strerror(errno);
     }
     return true;
 }

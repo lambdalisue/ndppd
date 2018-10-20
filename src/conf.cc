@@ -86,13 +86,13 @@ bool conf::empty() const
         std::shared_ptr<conf> cf(new conf);
 
         if (cf->parse_block(&c_buf)) {
-            cf->dump(LOG_DEBUG);
+            cf->dump(LogLevel::Debug);
             return cf;
         }
 
-        logger::error() << "Could not parse configuration file";
+        Logger::error() << "Could not parse configuration file";
     } catch (std::ifstream::failure e) {
-        logger::error() << "Failed to load configuration file '" << path << "'";
+        Logger::error() << "Failed to load configuration file '" << path << "'";
     }
 
     return std::shared_ptr<conf>();
@@ -208,13 +208,13 @@ bool conf::parse(const char** str)
     return true;
 }
 
-void conf::dump(int pri) const
+void conf::dump(LogLevel logLevel) const
 {
-    logger l(pri);
+    Logger l(logLevel);
     dump(l, 0);
 }
 
-void conf::dump(logger& l, int level) const
+void conf::dump(Logger& l, int level) const
 {
     std::string pfx;
     for (int i = 0; i < level; i++) {
@@ -226,7 +226,7 @@ void conf::dump(logger& l, int level) const
     }
 
     if (_is_block) {
-        l << "{" << logger::endl;
+        l << "{" << Logger::endl;
 
         std::multimap<std::string, std::shared_ptr<conf> >::const_iterator it;
 
@@ -235,10 +235,10 @@ void conf::dump(logger& l, int level) const
             it->second->dump(l, level + 1);
         }
 
-        l << pfx << "}" << logger::endl;
+        l << pfx << "}" << Logger::endl;
     }
 
-    l << logger::endl;
+    l << Logger::endl;
 }
 
 std::shared_ptr<conf> conf::operator()(const std::string& name, int index) const

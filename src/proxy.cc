@@ -75,7 +75,7 @@ std::shared_ptr<proxy> proxy::create(const std::shared_ptr<iface>& ifa, bool pro
 
     ifa->add_serves(pr);
 
-    logger::debug() << "proxy::create() if=" << ifa->name();
+    Logger::debug() << "proxy::create() if=" << ifa->name();
 
     return pr;
 }
@@ -112,7 +112,7 @@ std::shared_ptr<session> proxy::find_or_create_session(const address& taddr)
             it != _rules.end(); it++) {
         std::shared_ptr<rule> ru = *it;
 
-        logger::debug() << "checking " << ru->addr() << " against " << taddr;
+        Logger::debug() << "checking " << ru->addr() << " against " << taddr;
 
         if (ru->addr() == taddr) {
             if (!se) {
@@ -123,7 +123,7 @@ std::shared_ptr<session> proxy::find_or_create_session(const address& taddr)
                 std::shared_ptr<route> rt = route::find(taddr);
 
                 if (rt->ifname() == _ifa->name()) {
-                    logger::debug() << "skipping route since it's using interface " << rt->ifname();
+                    Logger::debug() << "skipping route since it's using interface " << rt->ifname();
                 } else {
                     std::shared_ptr<iface> ifa = rt->ifa();
 
@@ -176,7 +176,7 @@ void proxy::handle_advert(const address& saddr, const address& taddr, const std:
 
 void proxy::handle_stateless_advert(const address& saddr, const address& taddr, const std::string& ifname, bool use_via)
 {
-    logger::debug()
+    Logger::debug()
         << "proxy::handle_stateless_advert() proxy=" << (ifa() ? ifa()->name() : "null") << ", taddr=" << taddr.to_string() << ", ifname=" << ifname;
     
     std::shared_ptr<session> se = find_or_create_session(taddr);
@@ -189,7 +189,7 @@ void proxy::handle_stateless_advert(const address& saddr, const address& taddr, 
 
 void proxy::handle_solicit(const address& saddr, const address& taddr, const std::string& ifname)
 {
-    logger::debug()
+    Logger::debug()
         << "proxy::handle_solicit()";
     
     // Otherwise find or create a session to scan for this address
