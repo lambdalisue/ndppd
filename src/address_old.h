@@ -37,12 +37,7 @@ public:
     address(const in6_addr& addr);
     address(const in6_addr& addr, const in6_addr& mask);
     address(const in6_addr& addr, int prefix);
-    
-    static void update(int elapsed_time);
 
-    static int ttl();
-
-    static void ttl(int ttl);
 
     struct in6_addr& addr();
 
@@ -72,14 +67,6 @@ public:
     bool is_multicast() const;
 
     operator std::string() const;
-    
-    static void add(const address& addr, const std::string& ifname);
-    
-    static void load(const std::string& path);
-    
-    static std::list<std::shared_ptr<route> >::iterator addresses_begin();
-    
-    static std::list<std::shared_ptr<route> >::iterator addresses_end();
 
 private:
     static int _ttl;

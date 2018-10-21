@@ -33,7 +33,7 @@
 using namespace ndppd;
 
 namespace {
-    const char *priority_names[] = {
+    const char *logLevel_names[] = {
             "Error",
             "Warning",
             "Notice",
@@ -150,12 +150,12 @@ void Logger::flush() {
                 return;
         }
 
-        ::syslog(pri, "(%s) %s", priority_names[(int) _logLevel], _ss.str().c_str());
+        ::syslog(pri, "(%s) %s", logLevel_names[(int) _logLevel], _ss.str().c_str());
         return;
     }
 #endif
 
-    std::cout << "(" << priority_names[(int) _logLevel] << ") " << _ss.str() << std::endl;
+    std::cout << "(" << logLevel_names[(int) _logLevel] << ") " << _ss.str() << std::endl;
     _ss.str("");
 }
 
@@ -201,8 +201,8 @@ bool Logger::verbosity(const std::string &name) {
         return true;
     }
 
-    for (int i = 0; priority_names[i]; i++) {
-        if (!strcmp(c_name, priority_names[i])) {
+    for (int i = 0; logLevel_names[i]; i++) {
+        if (!strcmp(c_name, logLevel_names[i])) {
             ::verbosity = (LogLevel) i;
             return true;
         }

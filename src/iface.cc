@@ -41,6 +41,8 @@
 
 #include "ndppd.h"
 #include "route.h"
+#include "address.h"
+#include "netlink.h"
 
 NDPPD_NS_BEGIN
 
@@ -501,18 +503,18 @@ ssize_t iface::read_advert(address& saddr, address& taddr)
 
 bool iface::is_local(const address& addr)
 {
-    // Check if the address is for an interface we own that is attached to
-    // one of the slave interfaces    
-    for (std::list<std::shared_ptr<route> >::iterator ad = address::addresses_begin(); ad != address::addresses_end(); ad++)
-    {
-        if ((*ad)->addr() == addr)
-            return true;
-    }
-    return false;
+    // Netlink::is_local(..)
+    return true;
 }
 
 bool iface::handle_local(const address& saddr, const address& taddr)
 {
+    for (const Address &adddress : Netlink::local_addresses()) {
+
+    }
+
+/*
+
     // Check if the address is for an interface we own that is attached to
     // one of the slave interfaces    
     for (std::list<std::shared_ptr<route> >::iterator ad = address::addresses_begin(); ad != address::addresses_end(); ad++)
@@ -536,7 +538,7 @@ bool iface::handle_local(const address& saddr, const address& taddr)
                 }
             }
         }
-    }
+    }*/
     
     return false;
 }

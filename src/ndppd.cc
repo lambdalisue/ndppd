@@ -144,12 +144,7 @@ static bool configure(std::shared_ptr<conf>& cf)
         route::ttl(30000);
     else
         route::ttl(*x_cf);
-    
-    if (!(x_cf = cf->find("address-ttl")))
-        address::ttl(30000);
-    else
-        address::ttl(*x_cf);
-    
+
     std::list<std::shared_ptr<rule> > myrules;
 
     std::vector<std::shared_ptr<conf> >::const_iterator p_it;
@@ -380,8 +375,8 @@ int main(int argc, char* argv[], char* env[])
 #ifdef WITH_ND_NETLINK
     netlink_setup();
 #endif
-    auto nl = Netlink::create();
-    nl->test();
+    Netlink::initialize();
+    Netlink::load_local_ips();
 
     while (running) {
         Socket::poll();
@@ -406,9 +401,6 @@ int main(int argc, char* argv[], char* env[])
         if (rule::any_auto())
             route::update(elapsed_time);
         
-        if (rule::any_iface())
-            address::update(elapsed_time);
-
         session::update_all(elapsed_time);
     }
 

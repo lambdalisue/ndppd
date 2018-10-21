@@ -17,23 +17,33 @@
 #pragma once
 
 #include <memory>
+#include <set>
+
 #include "socket.h"
+#include "address.h"
 
 namespace ndppd {
+
+    class NetlinkAddress {
+    public:
+        NetlinkAddress(const Address &address, int interface);
+    };
 
     class NetlinkRoute {
 
     };
 
     class Netlink {
-    private:
-        std::unique_ptr<Socket> _socket;
-        Netlink();
-
     public:
-        static std::unique_ptr<Netlink> create();
+        static void initialize();
+        static void finalize();
 
-        void test() const;
+        static const std::set<Address> &local_addresses();
+        static void load_local_ips();
+        static bool is_local(const Address &address);
+
+        static void test();
+
 
     };
 }

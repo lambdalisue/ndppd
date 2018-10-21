@@ -19,6 +19,7 @@
 #include <arpa/inet.h>
 #include <cassert>
 #include <stdexcept>
+#include <cstring>
 #include "address.h"
 
 using namespace ndppd;
@@ -61,4 +62,12 @@ bool Address::operator==(const Address &address) const {
            _addr.s6_addr32[1] == address._addr.s6_addr32[1] &&
            _addr.s6_addr32[2] == address._addr.s6_addr32[2] &&
            _addr.s6_addr32[3] == address._addr.s6_addr32[3];
+}
+
+bool Address::operator!=(const Address &address) const {
+    return !(*this == address);
+}
+
+bool Address::operator<(const ndppd::Address &address) const {
+    return std::memcmp(&_addr, &address._addr, sizeof(in6_addr)) < 0;
 }

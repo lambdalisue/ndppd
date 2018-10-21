@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <linux/rtnetlink.h>
 #include <iostream>
+#include <set>
 #include "netlink.h"
 #include "socket.h"
 #include "ndppd.h"
@@ -27,27 +28,52 @@
 using namespace ndppd;
 
 namespace {
-    static void handler(Socket& socket) {
+    std::unique_ptr<Socket> _socket;
+    std::set<Address> local_addresses;
+
+    void handler(Socket &socket) {
 
     }
+
+    void handle_address(nlmsghdr *nlh) {
+        static Address localhost("::1");
+
+        auto data = (ifaddrmsg *) NLMSG_DATA(nlh);
+        int len = IFA_PAYLOAD(nlh);
+
+        for (auto rta = IFA_RTA(data); RTA_OK(rta, len); rta = RTA_NEXT(rta, len)) {
+            if (rta->rta_type == IFA_ADDRESS) {
+                Address address = Address(*(in6_addr *) RTA_DATA(rta));
+                if (address == localhost)
+                    continue;
+                local_addresses.insert(address);
+                Logger::info() << "Registered local address " << address.to_string();
+            }
+        }
+    }
+
 }
 
-std::unique_ptr<Netlink> Netlink::create() {
-    return std::unique_ptr<Netlink>(new Netlink());
-}
-
-Netlink::Netlink() {
+void Netlink::initialize() {
     _socket = std::move(Socket::create(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE));
-    _socket->bind((sockaddr_nl) { AF_NETLINK, 0, 0, RTMGRP_IPV6_ROUTE });
+    _socket->bind((sockaddr_nl) {AF_NETLINK, 0, 0, RTMGRP_IPV6_ROUTE | RTMGRP_IPV6_IFADDR});
 }
 
-void Netlink::test() const {
+void Netlink::finalize() {
+    _socket.reset();
+}
+
+const std::set<Address> &Netlink::local_addresses() {
+    return ::local_addresses;
+}
+
+void Netlink::load_local_ips() {
     struct {
         nlmsghdr hdr;
-        rtgenmsg gen;
+        rtgenmsg msg;
     } payload{
-        { NLMSG_LENGTH(sizeof(rtgenmsg)), RTM_GETROUTE, NLM_F_REQUEST | NLM_F_DUMP, 1 },
-        { AF_INET6 }
+            {NLMSG_LENGTH(sizeof(rtgenmsg)), RTM_GETADDR, NLM_F_REQUEST | NLM_F_DUMP, 1},
+            {AF_INET6}
     };
 
     if (_socket->sendmsg((sockaddr_nl) {AF_NETLINK}, &payload, sizeof(payload)) < 0)
@@ -60,8 +86,52 @@ void Netlink::test() const {
     if (len < 0)
         throw std::system_error(errno, std::generic_category());
 
-    for (auto nh = (nlmsghdr *)(void *)buf; NLMSG_OK(nh, len); NLMSG_NEXT(nh, len)) {
-        auto entry = (rtmsg *)NLMSG_DATA(nh);
+    for (auto nlh = (nlmsghdr *) (void *) buf; NLMSG_OK(nlh, len); nlh = NLMSG_NEXT(nlh, len)) {
+        switch (nlh->nlmsg_type) {
+            case NLMSG_ERROR:
+                return;
+
+            case NLMSG_DONE:
+                return;
+
+            case RTM_NEWADDR:
+                handle_address(nlh);
+                continue;
+
+            default:
+                Logger::debug() << "Unexpected NL message";
+        }
+    }
+}
+
+bool Netlink::is_local(const Address &address) {
+    return ::local_addresses.find(address) != ::local_addresses.end();
+}
+
+
+
+
+void Netlink::test() {
+    struct {
+        nlmsghdr hdr;
+        rtgenmsg gen;
+    } payload{
+            {NLMSG_LENGTH(sizeof(rtgenmsg)), RTM_GETROUTE, NLM_F_REQUEST | NLM_F_DUMP, 1},
+            {AF_INET6}
+    };
+
+    if (_socket->sendmsg((sockaddr_nl) {AF_NETLINK}, &payload, sizeof(payload)) < 0)
+        throw std::system_error(errno, std::generic_category());
+
+    char buf[1024];
+
+    sockaddr_nl sa{};
+    auto len = _socket->recvmsg(sa, buf, sizeof(buf), true);
+    if (len < 0)
+        throw std::system_error(errno, std::generic_category());
+
+    for (auto nh = (nlmsghdr *) (void *) buf; NLMSG_OK(nh, len); NLMSG_NEXT(nh, len)) {
+        auto entry = (rtmsg *) NLMSG_DATA(nh);
 
         // entry->rtm_dst_len
 
@@ -73,7 +143,7 @@ void Netlink::test() const {
 
         for (; RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
             if (rta->rta_type == RTA_DST) {
-                std::cout << address(*(in6_addr *)RTA_DATA(rta)).to_string() << std::endl;
+                std::cout << address(*(in6_addr *) RTA_DATA(rta)).to_string() << std::endl;
             }
         }
     }

@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <netinet/in.h>
+
 namespace ndppd {
     class Address {
     public:
@@ -36,6 +38,8 @@ namespace ndppd {
         std::string to_string() const;
 
         bool operator==(const Address &address) const;
+        bool operator!=(const Address &address) const;
+        bool operator<(const Address &address) const;
 
     private:
         in6_addr _addr;
