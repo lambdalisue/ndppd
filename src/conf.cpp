@@ -93,7 +93,7 @@ std::shared_ptr<conf> conf::load(const std::string& path)
 
         Logger::error() << "Could not parse configuration file";
     }
-    catch (std::ifstream::failure e) {
+    catch (const std::ifstream::failure &e) {
         Logger::error() << "Failed to load configuration file '" << path << "'";
     }
 

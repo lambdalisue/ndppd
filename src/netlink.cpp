@@ -46,9 +46,11 @@ static void handle_address(nlmsghdr* nlh)
 
     for (auto rta = IFA_RTA(data); RTA_OK(rta, len); rta = RTA_NEXT(rta, len)) {
         if (rta->rta_type == IFA_ADDRESS) {
-            Address address = Address(*(in6_addr*) RTA_DATA(rta));
+            auto address = Address(*(in6_addr*) RTA_DATA(rta));
+
             if (address == localhost)
                 continue;
+
             local_addresses.insert(address);
             Logger::info() << "Registered local address " << address.to_string();
         }

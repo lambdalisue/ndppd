@@ -46,9 +46,8 @@ std::shared_ptr<Proxy> Proxy::find_aunt(const std::string& ifname, const Address
             }
         }
 
-        if (!has_addr) {
+        if (!has_addr)
             continue;
-        }
 
         if (proxy->ifa() && proxy->ifa()->name() == ifname)
             return proxy;
@@ -77,9 +76,8 @@ std::shared_ptr<Proxy> Proxy::open(const std::string& ifname, bool promiscuous)
 {
     std::shared_ptr<Interface> ifa = Interface::open_pfd(ifname, promiscuous);
 
-    if (!ifa) {
-        return std::shared_ptr<Proxy>();
-    }
+    if (!ifa)
+        return {};
 
     return create(ifa, promiscuous);
 }
@@ -94,7 +92,7 @@ std::shared_ptr<Session> Proxy::find_or_create_session(const Address& taddr)
             return session;
     }
 
-    std::shared_ptr<Session> se;
+    std::shared_ptr<Session> session;
 
     // Since we couldn't find a session that matched, we'll try to find
     // a matching rule instead, and then set up a new session.
@@ -103,9 +101,8 @@ std::shared_ptr<Session> Proxy::find_or_create_session(const Address& taddr)
         Logger::debug() << "checking " << rule->cidr() << " against " << taddr;
 
         if (rule->cidr() % taddr) {
-            if (!se) {
-                se = Session::create(_ptr.lock(), taddr, _autowire, _keepalive, _retries);
-            }
+            if (!session)
+                session = Session::create(_ptr.lock(), taddr, _autowire, _keepalive, _retries);
 
             if (rule->is_auto()) {
                 // TODO: Implement route support again
@@ -125,14 +122,14 @@ std::shared_ptr<Session> Proxy::find_or_create_session(const Address& taddr)
             else if (!rule->daughter()) {
                 // This rule doesn't have an interface, and thus we'll consider
                 // it "static" and immediately send the response.
-                se->handle_advert();
-                return se;
+                session->handle_advert();
+                return session;
 
             }
             else {
 
                 std::shared_ptr<Interface> ifa = rule->daughter();
-                se->add_iface(ifa);
+                session->add_iface(ifa);
 
 #ifdef WITH_ND_NETLINK
                 if (if_addr_find(ifa->name(), &taddr.const_addr())) {
@@ -145,20 +142,19 @@ std::shared_ptr<Session> Proxy::find_or_create_session(const Address& taddr)
         }
     }
 
-    if (se) {
-        _sessions.push_back(se);
+    if (session) {
+        _sessions.push_back(session);
     }
 
-    return se;
+    return session;
 }
 
 void Proxy::handle_advert(const Address& saddr, const Address& taddr, const std::string& ifname, bool use_via)
 {
     // If a session exists then process the advert in the context of the session
     for (auto& session : _sessions) {
-        if ((session->taddr() == taddr)) {
+        if ((session->taddr() == taddr))
             session->handle_advert(saddr, ifname, use_via);
-        }
     }
 }
 
@@ -169,7 +165,9 @@ void Proxy::handle_stateless_advert(const Address& saddr, const Address& taddr,
                     << taddr.to_string() << ", ifname=" << ifname;
 
     std::shared_ptr<Session> session = find_or_create_session(taddr);
-    if (!session) return;
+
+    if (!session)
+        return;
 
     if (_autowire && session->status() == Session::WAITING) {
         // TODO
@@ -183,7 +181,9 @@ void Proxy::handle_solicit(const Address& saddr, const Address& taddr, const std
 
     // Otherwise find or create a session to scan for this address
     std::shared_ptr<Session> session = find_or_create_session(taddr);
-    if (!session) return;
+
+    if (!session)
+        return;
 
     // Touching the session will cause an NDP advert to be transmitted to all
     // the daughters

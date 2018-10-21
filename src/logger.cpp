@@ -182,9 +182,8 @@ bool Logger::syslog(bool enable)
         setlogmask(LOG_UPTO(LOG_DEBUG));
         openlog("ndppd", LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID, LOG_USER);
     }
-    else {
+    else
         closelog();
-    }
 
     return use_syslog;
 }
@@ -210,9 +209,8 @@ bool Logger::verbosity(const std::string& name)
 {
     const char* c_name = name.c_str();
 
-    if (!*c_name) {
+    if (!*c_name)
         return false;
-    }
 
     if (isdigit(*c_name)) {
         ndppd::verbosity = (LogLevel) atoi(c_name);

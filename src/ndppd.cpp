@@ -132,7 +132,6 @@ static std::shared_ptr<conf> load_config(const std::string& path)
                         << "You must specify either 'iface', 'auto' or "
                         << "'static'";
                 return {};
-
             }
         }
     }
@@ -153,9 +152,8 @@ static bool configure(std::shared_ptr<conf>& cf)
     for (p_it = proxies.begin(); p_it != proxies.end(); p_it++) {
         std::shared_ptr<conf> pr_cf = *p_it;
 
-        if (pr_cf->empty()) {
+        if (pr_cf->empty())
             return false;
-        }
 
         bool promiscuous = false;
         if (!(x_cf = pr_cf->find("promiscuous")))
@@ -220,20 +218,17 @@ static bool configure(std::shared_ptr<conf>& cf)
 
             if (x_cf = ru_cf->find("iface")) {
                 std::shared_ptr<Interface> ifa = Interface::open_ifd(*x_cf);
-                if (!ifa) {
+                if (!ifa)
                     return false;
-                }
 
                 ifa->add_parent(pr);
 
                 myrules.push_back(pr->add_rule(addr, ifa, autovia));
             }
-            else if (ru_cf->find("auto")) {
+            else if (ru_cf->find("auto"))
                 myrules.push_back(pr->add_rule(addr, true));
-            }
-            else {
+            else
                 myrules.push_back(pr->add_rule(addr, false));
-            }
         }
     }
 
@@ -282,7 +277,7 @@ static bool running = true;
 static void exit_ndppd(int sig)
 {
     Logger::error() << "Shutting down...";
-    running = 0;
+    running = false;
 }
 
 int main(int argc, char* argv[], char* env[])

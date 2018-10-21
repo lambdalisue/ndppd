@@ -71,7 +71,7 @@ std::shared_ptr<Rule> Rule::create(const std::shared_ptr<Proxy>& pr, const Cidr&
     rule->_aut = aut;
     _any_aut = _any_aut || aut;
 
-    if (aut == false)
+    if (!aut)
         _any_static = true;
 
     Logger::debug()

@@ -38,9 +38,8 @@ void Session::update_all(int elapsed_time)
 
         it++;
 
-        if ((session->_ttl -= elapsed_time) >= 0) {
+        if ((session->_ttl -= elapsed_time) >= 0)
             continue;
-        }
 
         auto pr = session->_pr.lock();
 
@@ -75,9 +74,8 @@ void Session::update_all(int elapsed_time)
                 // Send another solicit
                 session->send_solicit();
             }
-            else {
+            else
                 pr->remove_session(session);
-            }
             break;
 
         case Session::VALID:
@@ -91,9 +89,8 @@ void Session::update_all(int elapsed_time)
                 // Send another solicit to make sure the route is still valid
                 session->send_solicit();
             }
-            else {
+            else
                 pr->remove_session(session);
-            }
             break;
 
         default:
@@ -130,10 +127,9 @@ Session::create(const std::shared_ptr<Proxy>& pr, const Address& taddr, bool aut
 
     _sessions.push_back(session);
 
-    Logger::debug()
-            << "session::create() pr=" << Logger::format("%x", (Proxy*) pr.get()) << ", proxy="
-            << ((pr->ifa()) ? pr->ifa()->name() : "null")
-            << ", taddr=" << taddr << " =" << Logger::format("%x", (Session*) session.get());
+    Logger::debug() << "session::create() pr=" << Logger::format("%x", (Proxy*) pr.get())
+                    << ", proxy=" << ((pr->ifa()) ? pr->ifa()->name() : "null")
+                    << ", taddr=" << taddr << " =" << Logger::format("%x", (Session*) session.get());
 
     return session;
 }
