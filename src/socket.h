@@ -19,6 +19,7 @@
 #include <system_error>
 #include <cassert>
 #include <memory>
+#include <sys/socket.h>
 
 namespace ndppd {
 

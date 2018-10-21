@@ -33,102 +33,104 @@
 #include <cstring>
 #include "socket.h"
 #include "ndppd.h"
+#include "logger.h"
 
-using namespace ndppd;
-
-namespace {
-    bool pollfds_dirty;
-    std::vector<pollfd> pollfds;
-    std::set<Socket *> sockets;
-}
-
-std::unique_ptr<Socket> Socket::create(int domain, int type, int protocol) {
-    return std::unique_ptr<Socket>(new Socket(domain, type, protocol));
-}
-
-void Socket::poll() {
-    int len;
-
-    if (pollfds_dirty) {
-        pollfds.resize(sockets.size());
-
-        std::transform(sockets.cbegin(), sockets.cend(), pollfds.begin(),
-                       [](const Socket *socket) {
-                           return (pollfd) {socket->_fd, POLLIN};
-                       });
-
-        pollfds_dirty = false;
+namespace ndppd {
+    namespace {
+        bool pollfds_dirty;
+        std::vector<pollfd> pollfds;
+        std::set<Socket *> sockets;
     }
 
-    if ((len = ::poll(&pollfds[0], pollfds.size(), 50)) < 0)
-        throw std::system_error(errno, std::generic_category());
+    std::unique_ptr<Socket> Socket::create(int domain, int type, int protocol) {
+        return std::unique_ptr<Socket>(new Socket(domain, type, protocol));
+    }
 
-    for (auto it : pollfds) {
-        if (it.revents & POLLIN) {
-            auto s_it = std::find_if(sockets.cbegin(), sockets.cend(),
-                                     [it](Socket *socket) { return socket->_fd == it.fd; });
-            if (s_it != sockets.cend() && (*s_it)->_handler)
-                (*s_it)->_handler(**s_it);
+    void Socket::poll() {
+        int len;
+
+        if (pollfds_dirty) {
+            pollfds.resize(sockets.size());
+
+            std::transform(sockets.cbegin(), sockets.cend(), pollfds.begin(),
+                           [](const Socket *socket) {
+                               return (pollfd) { socket->_fd, POLLIN };
+                           });
+
+            pollfds_dirty = false;
+        }
+
+        if ((len = ::poll(&pollfds[0], pollfds.size(), 50)) < 0)
+            throw std::system_error(errno, std::generic_category());
+
+        for (auto it : pollfds) {
+            if (it.revents & POLLIN) {
+                auto s_it = std::find_if(sockets.cbegin(), sockets.cend(),
+                                         [it](Socket *socket) { return socket->_fd == it.fd; });
+                if (s_it != sockets.cend() && (*s_it)->_handler)
+                    (*s_it)->_handler(**s_it);
+            }
         }
     }
-}
 
-Socket::Socket(int domain, int type, int protocol) : _handler(nullptr) {
-    // Create the socket.
-    if ((_fd = ::socket(domain, type, protocol)) < 0)
-        throw std::system_error(errno, std::generic_category());
-    sockets.insert(this);
-    pollfds_dirty = true;
-}
+    Socket::Socket(int domain, int type, int protocol) : _handler(nullptr) {
+        // Create the socket.
+        if ((_fd = ::socket(domain, type, protocol)) < 0)
+            throw std::system_error(errno, std::generic_category());
+        sockets.insert(this);
+        pollfds_dirty = true;
+    }
 
-Socket::~Socket() {
-    ::close(_fd);
-    sockets.erase(this);
-    pollfds_dirty = true;
-}
+    Socket::~Socket() {
+        ::close(_fd);
+        sockets.erase(this);
+        pollfds_dirty = true;
+    }
 
-bool Socket::if_allmulti(const std::string &name, bool state) const {
-    ifreq ifr{};
+    bool Socket::if_allmulti(const std::string &name, bool state) const {
+        ifreq ifr{};
 
-    Logger::debug() << "Socket::if_allmulti() state="<< state << ", _name=\"" << name << "\"";
+        Logger::debug() << "Socket::if_allmulti() state=" << state << ", _name=\"" << name << "\"";
 
-    ::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ);
+        ::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ);
 
-    if (ioctl(_fd, SIOCGIFFLAGS, &ifr) < 0)
-        throw std::system_error(errno, std::generic_category(), "Socket::if_allmulti()");
+        if (ioctl(_fd, SIOCGIFFLAGS, &ifr) < 0)
+            throw std::system_error(errno, std::generic_category(), "Socket::if_allmulti()");
 
-    bool old_state = (ifr.ifr_flags & IFF_ALLMULTI) != 0;
+        bool old_state = (ifr.ifr_flags & IFF_ALLMULTI) != 0;
 
-    if (state == old_state)
+        if (state == old_state)
+            return old_state;
+
+        ifr.ifr_flags = state ? (ifr.ifr_flags | IFF_ALLMULTI) : (ifr.ifr_flags & ~IFF_ALLMULTI);
+
+        if (ioctl(_fd, SIOCSIFFLAGS, &ifr) < 0)
+            throw std::system_error(errno, std::generic_category(), "Socket::if_allmulti()");
+
         return old_state;
+    }
 
-    ifr.ifr_flags = state ? (ifr.ifr_flags | IFF_ALLMULTI) : (ifr.ifr_flags & ~IFF_ALLMULTI);
+    bool Socket::if_promisc(const std::string &name, bool state) const {
+        ifreq ifr{};
 
-    if (ioctl(_fd, SIOCSIFFLAGS, &ifr) < 0)
-        throw std::system_error(errno, std::generic_category(), "Socket::if_allmulti()");
+        Logger::debug() << "Socket::if_promisc() state=" << state << ", _name=\"" << name << "\"";
 
-    return old_state;
-}
+        ::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ);
 
-bool Socket::if_promisc(const std::string &name, bool state) const {
-    ifreq ifr{};
+        if (ioctl(_fd, SIOCGIFFLAGS, &ifr) < 0)
+            throw std::system_error(errno, std::generic_category(), "Socket::if_promisc()");
 
-    Logger::debug() << "Socket::if_promisc() state="<< state << ", _name=\"" << name << "\"";
+        bool old_state = (ifr.ifr_flags & IFF_PROMISC) != 0;
 
-    ::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ);
+        if (state == old_state)
+            return old_state;
 
-    if (ioctl(_fd, SIOCGIFFLAGS, &ifr) < 0)
-        throw std::system_error(errno, std::generic_category(), "Socket::if_promisc()");
+        ifr.ifr_flags = state ? (ifr.ifr_flags | IFF_PROMISC) : (ifr.ifr_flags & ~IFF_PROMISC);
 
-    bool old_state = (ifr.ifr_flags & IFF_PROMISC) != 0;
+        if (ioctl(_fd, SIOCSIFFLAGS, &ifr) < 0)
+            throw std::system_error(errno, std::generic_category(), "Socket::if_promisc()");
 
-    if (state == old_state)
         return old_state;
-
-    ifr.ifr_flags = state ? (ifr.ifr_flags | IFF_PROMISC) : (ifr.ifr_flags & ~IFF_PROMISC);
-
-    if (ioctl(_fd, SIOCSIFFLAGS, &ifr) < 0)
-        throw std::system_error(errno, std::generic_category(), "Socket::if_promisc()");
-
-    return old_state;
+    }
 }
+

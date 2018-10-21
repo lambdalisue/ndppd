@@ -33,6 +33,7 @@ namespace ndppd {
 
 #ifndef DISABLE_SYSLOG
         static bool syslog(bool enable);
+
         static bool syslog();
 #endif
 

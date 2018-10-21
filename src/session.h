@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011-2018  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #pragma once
 
 #include <vector>
@@ -21,100 +22,99 @@
 
 #include "ndppd.h"
 
-NDPPD_NS_BEGIN
+namespace ndppd {
+    class proxy;
+    class iface;
 
-class proxy;
-class iface;
+    class session {
+    private:
+        std::weak_ptr<session> _ptr;
 
-class session {
-private:
-    std::weak_ptr<session> _ptr;
+        std::weak_ptr<proxy> _pr;
 
-    std::weak_ptr<proxy> _pr;
+        Address _saddr, _daddr, _taddr;
 
-    Address _saddr, _daddr, _taddr;
-    
-    bool _autowire;
-    
-    bool _keepalive;
-    
-    bool _wired;
-    
-    Address _wired_via;
-    
-    bool _touched;
+        bool _autowire;
 
-    // An array of interfaces this session is monitoring for
-    // ND_NEIGHBOR_ADVERT on.
-    std::list<std::shared_ptr<iface> > _ifaces;
+        bool _keepalive;
 
-    std::set<Address> _pending;
+        bool _wired;
 
-    // The remaining time in miliseconds the object will stay in the
-    // interface's session array or cache.
-    int _ttl;
-    
-    int _fails;
-    
-    int _retries;
+        Address _wired_via;
 
-    int _status;
+        bool _touched;
 
-    static std::list<std::weak_ptr<session> > _sessions;
+        // An array of interfaces this session is monitoring for
+        // ND_NEIGHBOR_ADVERT on.
+        std::list<std::shared_ptr<iface> > _ifaces;
 
-public:
-    enum
-    {
-        WAITING,  // Waiting for an advert response.
-        RENEWING, // Renewing;
-        VALID,    // Valid;
-        INVALID   // Invalid;
+        std::set<Address> _pending;
+
+        // The remaining time in miliseconds the object will stay in the
+        // interface's session array or cache.
+        int _ttl;
+
+        int _fails;
+
+        int _retries;
+
+        int _status;
+
+        static std::list<std::weak_ptr<session> > _sessions;
+
+    public:
+        enum
+        {
+            WAITING,  // Waiting for an advert response.
+            RENEWING, // Renewing;
+            VALID,    // Valid;
+            INVALID   // Invalid;
+        };
+
+        static void update_all(int elapsed_time);
+
+        // Destructor.
+        ~session();
+
+        static std::shared_ptr<session> create(const std::shared_ptr<proxy>& pr, const Address& taddr, bool autowire, bool keepalive, int retries);
+
+        void add_iface(const std::shared_ptr<iface>& ifa);
+
+        void add_pending(const Address& addr);
+
+        const Address& taddr() const;
+
+        const Address& daddr() const;
+
+        const Address& saddr() const;
+
+        bool autowire() const;
+
+        int retries() const;
+
+        int fails() const;
+
+        bool keepalive() const;
+
+        bool wired() const;
+
+        bool touched() const;
+
+        int status() const;
+
+        void status(int val);
+
+        void handle_advert();
+
+        void handle_advert(const Address& saddr, const std::string& ifname, bool use_via);
+
+        void touch();
+
+        void send_advert(const Address& daddr);
+
+        void send_solicit();
+
+        void refesh();
     };
 
-    static void update_all(int elapsed_time);
-
-    // Destructor.
-    ~session();
-
-    static std::shared_ptr<session> create(const std::shared_ptr<proxy>& pr, const Address& taddr, bool autowire, bool keepalive, int retries);
-
-    void add_iface(const std::shared_ptr<iface>& ifa);
-    
-    void add_pending(const Address& addr);
-
-    const Address& taddr() const;
-
-    const Address& daddr() const;
-
-    const Address& saddr() const;
-    
-    bool autowire() const;
-    
-    int retries() const;
-    
-    int fails() const;
-
-    bool keepalive() const;
-    
-    bool wired() const;
-    
-    bool touched() const;
-
-    int status() const;
-
-    void status(int val);
-    
-    void handle_advert();
-
-    void handle_advert(const Address& saddr, const std::string& ifname, bool use_via);
-    
-    void touch();
-
-    void send_advert(const Address& daddr);
-
-    void send_solicit();
-
-    void refesh();
-};
-
-NDPPD_NS_END
+}

@@ -29,9 +29,14 @@
 #include <unistd.h>
 
 #include "ndppd.h"
-
 #include "netlink.h"
 #include "socket.h"
+#include "conf.h"
+#include "cidr.h"
+#include "iface.h"
+#include "session.h"
+#include "proxy.h"
+#include "rule.h"
 
 using namespace ndppd;
 
@@ -228,8 +233,8 @@ static bool configure(std::shared_ptr<conf> &cf) {
     }
 
     // Print out all the topology    
-    for (auto i_it = iface::_map.begin(); i_it != iface::_map.end(); i_it++) {
-        std::shared_ptr<iface> ifa = i_it->second.lock();
+    for (auto &i_it : iface::_map) {
+        std::shared_ptr<iface> ifa = i_it.second.lock();
 
         Logger::debug() << "iface " << ifa->name() << " {";
 
@@ -283,16 +288,15 @@ int main(int argc, char *argv[], char *env[]) {
     std::string verbosity;
     bool daemon = false;
 
-    while (1) {
+    for (;;) {
         int c, opt;
 
-        static struct option long_options[] =
-                {
-                        {"config",  1, 0, 'c'},
-                        {"daemon",  0, 0, 'd'},
-                        {"verbose", 1, 0, 'v'},
-                        {0,         0, 0, 0}
-                };
+        static struct option long_options[] = {
+                { "config",  1, nullptr, 'c' },
+                { "daemon",  0, nullptr, 'd' },
+                { "verbose", 1, nullptr, 'v' },
+                { nullptr,   0, nullptr, 0 }
+        };
 
         c = getopt_long(argc, argv, "c:dp:v", long_options, &opt);
 
@@ -314,19 +318,15 @@ int main(int argc, char *argv[], char *env[]) {
 
             case 'v':
                 Logger::verbosity((LogLevel) ((int) Logger::verbosity() + 1));
-                /*if (optarg) {
-                    if (!logger::verbosity(optarg))
-                        logger::error() << "Unknown verbosity level '" << optarg << "'";
-                } else {
-                    logger::max_pri(LOG_INFO);
-                }*/
+                break;
+
+            default:
                 break;
         }
     }
 
-    Logger::notice()
-            << "ndppd (NDP Proxy Daemon) version " NDPPD_VERSION << Logger::endl
-            << "Using configuration file '" << config_path << "'";
+    Logger::notice() << "ndppd (NDP Proxy Daemon) version " NDPPD_VERSION << Logger::endl
+                     << "Using configuration file '" << config_path << "'";
 
     // Load configuration.
 
@@ -353,13 +353,9 @@ int main(int argc, char *argv[], char *env[]) {
 
     // Time stuff.
 
-    struct timeval t1, t2;
+    timeval t1{}, t2{};
+    gettimeofday(&t1, nullptr);
 
-    gettimeofday(&t1, 0);
-
-#ifdef WITH_ND_NETLINK
-    netlink_setup();
-#endif
     Netlink::initialize();
     Netlink::load_local_ips();
 
@@ -374,22 +370,15 @@ int main(int argc, char *argv[], char *env[]) {
         }
 
         int elapsed_time;
-        gettimeofday(&t2, 0);
+        gettimeofday(&t2, nullptr);
 
-        elapsed_time =
-                ((t2.tv_sec - t1.tv_sec) * 1000) +
-                ((t2.tv_usec - t1.tv_usec) / 1000);
+        elapsed_time = static_cast<int>(((t2.tv_sec - t1.tv_sec) * 1000) + ((t2.tv_usec - t1.tv_usec) / 1000));
 
         t1.tv_sec = t2.tv_sec;
         t1.tv_usec = t2.tv_usec;
 
         session::update_all(elapsed_time);
     }
-
-#ifdef WITH_ND_NETLINK
-    netlink_teardown();
-#endif
-
 
     Logger::notice() << "Bye";
 

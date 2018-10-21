@@ -49,5 +49,4 @@ namespace ndppd {
     };
 
     Logger &operator<<(Logger &logger, const Address &address);
-
 }

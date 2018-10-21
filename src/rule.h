@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011-2018  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #pragma once
 
 #include <string>
@@ -21,59 +22,58 @@
 #include <list>
 
 #include <sys/poll.h>
+#include <memory>
 
-#include "ndppd.h"
 #include "cidr.h"
 
-NDPPD_NS_BEGIN
+namespace ndppd {
 
-class iface;
-class proxy;
+    class iface;
+    class proxy;
 
-class rule {
-public:
-    static std::shared_ptr<rule> create(const std::shared_ptr<proxy>& pr, const Cidr& cidr, const std::shared_ptr<iface>& ifa);
+    class rule {
+    public:
+        static std::shared_ptr<rule> create(const std::shared_ptr<proxy>& pr, const Cidr& cidr, const std::shared_ptr<iface>& ifa);
 
-    static std::shared_ptr<rule> create(const std::shared_ptr<proxy>& pr, const Cidr& cidr, bool stc = true);
+        static std::shared_ptr<rule> create(const std::shared_ptr<proxy>& pr, const Cidr& cidr, bool stc = true);
 
-    const Cidr& cidr() const;
+        const Cidr& cidr() const;
 
-    std::shared_ptr<iface> daughter() const;
+        std::shared_ptr<iface> daughter() const;
 
-    bool is_auto() const;
+        bool is_auto() const;
 
-    bool check(const Address& addr) const;
+        bool check(const Address& addr) const;
 
-    static bool any_auto();
-    
-    static bool any_static();
-    
-    static bool any_iface();
-    
-    bool autovia() const;
+        static bool any_auto();
 
-    void autovia(bool val);
+        static bool any_static();
 
-private:
-    std::weak_ptr<rule> _ptr;
+        static bool any_iface();
 
-    std::weak_ptr<proxy> _pr;
+        bool autovia() const;
 
-    std::shared_ptr<iface> _daughter;
+        void autovia(bool val);
 
-    Cidr _cidr;
+    private:
+        std::weak_ptr<rule> _ptr;
 
-    bool _aut;
+        std::weak_ptr<proxy> _pr;
 
-    static bool _any_aut;
-    
-    static bool _any_static;
-    
-    static bool _any_iface;
-    
-    bool _autovia;
+        std::shared_ptr<iface> _daughter;
 
-    rule();
-};
+        Cidr _cidr;
 
-NDPPD_NS_END
+        bool _aut;
+
+        static bool _any_aut;
+
+        static bool _any_static;
+
+        static bool _any_iface;
+
+        bool _autovia;
+
+        rule();
+    };
+}

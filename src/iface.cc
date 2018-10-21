@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011-2018  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -39,12 +40,13 @@
 #include <vector>
 #include <map>
 
-#include "ndppd.h"
+#include "iface.h"
+#include "proxy.h"
+#include "rule.h"
 #include "address.h"
 #include "netlink.h"
 
-NDPPD_NS_BEGIN
-
+namespace ndppd {
     std::map<std::string, std::weak_ptr<iface> > iface::_map;
 
     bool iface::_map_dirty = false;
@@ -809,11 +811,11 @@ NDPPD_NS_BEGIN
     }
 
     const Range<std::list<std::weak_ptr<proxy>>::const_iterator> iface::parents() const {
-        return {_parents.cbegin(), _parents.cend()};
+        return { _parents.cbegin(), _parents.cend() };
     }
 
     const Range<std::list<std::weak_ptr<proxy>>::const_iterator> iface::serves() const {
-        return {_serves.cbegin(), _serves.cend()};
+        return { _serves.cbegin(), _serves.cend() };
     }
+}
 
-NDPPD_NS_END

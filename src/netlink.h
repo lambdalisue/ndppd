@@ -26,19 +26,19 @@
 namespace ndppd {
 
 
-
     class Netlink {
     public:
         static void initialize();
+
         static void finalize();
 
         static const Range<std::set<Address>::const_iterator> local_addresses();
+
         static void load_local_ips();
+
         static bool is_local(const Address &address);
 
         static void test();
-
-
     };
 }
 
