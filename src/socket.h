@@ -39,6 +39,16 @@ namespace ndppd {
 
         ~Socket();
 
+        bool if_allmulti(const std::string &name, bool state = true) const;
+
+        /*!
+         * Enable or disable PROMISC for the specified interface.
+         */
+        bool if_promisc(const std::string &name, bool state = true) const;
+
+        /*!
+         *
+         */
         template<typename T>
         void bind(const T &sa) const {
             if ((::bind(_fd, (const sockaddr *) &sa, sizeof(T))) < 0)

@@ -18,6 +18,10 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#include <sys/poll.h>
+
 #include <unistd.h>
 #include <cassert>
 #include <vector>
@@ -25,7 +29,10 @@
 #include <poll.h>
 #include <algorithm>
 #include <iostream>
+#include <net/if.h>
+#include <cstring>
 #include "socket.h"
+#include "ndppd.h"
 
 using namespace ndppd;
 
@@ -80,8 +87,48 @@ Socket::~Socket() {
     pollfds_dirty = true;
 }
 
+bool Socket::if_allmulti(const std::string &name, bool state) const {
+    ifreq ifr{};
 
+    Logger::debug() << "Socket::if_allmulti() state="<< state << ", _name=\"" << name << "\"";
 
+    ::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ);
 
+    if (ioctl(_fd, SIOCGIFFLAGS, &ifr) < 0)
+        throw std::system_error(errno, std::generic_category(), "Socket::if_allmulti()");
 
+    bool old_state = (ifr.ifr_flags & IFF_ALLMULTI) != 0;
 
+    if (state == old_state)
+        return old_state;
+
+    ifr.ifr_flags = state ? (ifr.ifr_flags | IFF_ALLMULTI) : (ifr.ifr_flags & ~IFF_ALLMULTI);
+
+    if (ioctl(_fd, SIOCSIFFLAGS, &ifr) < 0)
+        throw std::system_error(errno, std::generic_category(), "Socket::if_allmulti()");
+
+    return old_state;
+}
+
+bool Socket::if_promisc(const std::string &name, bool state) const {
+    ifreq ifr{};
+
+    Logger::debug() << "Socket::if_promisc() state="<< state << ", _name=\"" << name << "\"";
+
+    ::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ);
+
+    if (ioctl(_fd, SIOCGIFFLAGS, &ifr) < 0)
+        throw std::system_error(errno, std::generic_category(), "Socket::if_promisc()");
+
+    bool old_state = (ifr.ifr_flags & IFF_PROMISC) != 0;
+
+    if (state == old_state)
+        return old_state;
+
+    ifr.ifr_flags = state ? (ifr.ifr_flags | IFF_PROMISC) : (ifr.ifr_flags & ~IFF_PROMISC);
+
+    if (ioctl(_fd, SIOCSIFFLAGS, &ifr) < 0)
+        throw std::system_error(errno, std::generic_category(), "Socket::if_promisc()");
+
+    return old_state;
+}
