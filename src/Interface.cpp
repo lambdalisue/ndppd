@@ -40,7 +40,7 @@
 #include <vector>
 #include <map>
 
-#include "iface.h"
+#include "interface.h"
 #include "proxy.h"
 #include "rule.h"
 #include "address.h"
@@ -48,18 +48,18 @@
 
 namespace ndppd
 {
-    std::map<std::string, std::weak_ptr<iface> > iface::_map;
+    std::map<std::string, std::weak_ptr<Interface> > Interface::_map;
 
-    bool iface::_map_dirty = false;
+    bool Interface::_map_dirty = false;
 
-    std::vector<struct pollfd> iface::_pollfds;
+    std::vector<struct pollfd> Interface::_pollfds;
 
-    iface::iface() :
+    Interface::Interface() :
             _ifd(-1), _pfd(-1), _name("")
     {
     }
 
-    iface::~iface()
+    Interface::~Interface()
     {
         Logger::debug() << "iface::~iface()";
 
@@ -85,13 +85,13 @@ namespace ndppd
         _parents.clear();
     }
 
-    std::shared_ptr<iface> iface::open_pfd(const std::string &name, bool promiscuous)
+    std::shared_ptr<Interface> Interface::open_pfd(const std::string &name, bool promiscuous)
     {
         int fd = 0;
 
-        std::map<std::string, std::weak_ptr<iface> >::iterator it = _map.find(name);
+        std::map<std::string, std::weak_ptr<Interface> >::iterator it = _map.find(name);
 
-        std::shared_ptr<iface> ifa;
+        std::shared_ptr<Interface> ifa;
 
         if (it != _map.end() && (ifa = it->second.lock()))
         {
@@ -105,14 +105,14 @@ namespace ndppd
         }
 
         if (!ifa)
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
 
         // Create a socket.
 
         if ((fd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_IPV6))) < 0)
         {
             Logger::error() << "Unable to create socket";
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
         }
 
         // Bind to the specified interface.
@@ -127,14 +127,14 @@ namespace ndppd
         {
             close(fd);
             Logger::error() << "Failed to bind to interface '" << name << "'";
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
         }
 
         if (bind(fd, (struct sockaddr *) &lladdr, sizeof(struct sockaddr_ll)) < 0)
         {
             close(fd);
             Logger::error() << "Failed to bind to interface '" << name << "'";
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
         }
 
         // Switch to non-blocking mode.
@@ -145,7 +145,7 @@ namespace ndppd
         {
             close(fd);
             Logger::error() << "Failed to switch to non-blocking on interface '" << name << "'";
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
         }
 
         // Set up filter.
@@ -183,7 +183,7 @@ namespace ndppd
         if (setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &fprog, sizeof(fprog)) < 0)
         {
             Logger::error() << "Failed to set filter";
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
         }
 
         // Set up an instance of 'iface'.
@@ -208,13 +208,13 @@ namespace ndppd
         return ifa;
     }
 
-    std::shared_ptr<iface> iface::open_ifd(const std::string &name)
+    std::shared_ptr<Interface> Interface::open_ifd(const std::string &name)
     {
         int fd;
 
-        std::map<std::string, std::weak_ptr<iface> >::iterator it = _map.find(name);
+        std::map<std::string, std::weak_ptr<Interface> >::iterator it = _map.find(name);
 
-        std::shared_ptr<iface> ifa;
+        std::shared_ptr<Interface> ifa;
 
         if ((it != _map.end()) && (ifa = it->second.lock()) && ifa->_ifd)
             return ifa;
@@ -224,7 +224,7 @@ namespace ndppd
         if ((fd = socket(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6)) < 0)
         {
             Logger::error() << "Unable to create socket";
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
         }
 
         // Bind to the specified interface.
@@ -239,7 +239,7 @@ namespace ndppd
         {
             close(fd);
             Logger::error() << "Failed to bind to interface '" << name << "'";
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
         }
 
         // Detect the link-layer address.
@@ -254,7 +254,7 @@ namespace ndppd
             Logger::error()
                     << "Failed to detect link-layer address for interface '"
                     << name << "'";
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
         }
 
         Logger::debug()
@@ -270,7 +270,7 @@ namespace ndppd
         {
             close(fd);
             Logger::error() << "iface::open_ifd() failed IPV6_MULTICAST_HOPS";
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
         }
 
         if (setsockopt(fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS, &hops,
@@ -278,7 +278,7 @@ namespace ndppd
         {
             close(fd);
             Logger::error() << "iface::open_ifd() failed IPV6_UNICAST_HOPS";
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
         }
 
         // Switch to non-blocking mode.
@@ -291,7 +291,7 @@ namespace ndppd
             Logger::error()
                     << "Failed to switch to non-blocking on interface '"
                     << name << "'";
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
         }
 
         // Set up filter.
@@ -303,14 +303,14 @@ namespace ndppd
         if (setsockopt(fd, IPPROTO_ICMPV6, ICMP6_FILTER, &filter, sizeof(filter)) < 0)
         {
             Logger::error() << "Failed to set filter";
-            return std::shared_ptr<iface>();
+            return std::shared_ptr<Interface>();
         }
 
         // Set up an instance of 'iface'.
 
         if (it == _map.end())
         {
-            ifa.reset(new iface());
+            ifa.reset(new Interface());
             ifa->_name = name;
             ifa->_ptr = ifa;
 
@@ -330,7 +330,7 @@ namespace ndppd
         return ifa;
     }
 
-    ssize_t iface::read(int fd, struct sockaddr *saddr, ssize_t saddr_size, uint8_t *msg, size_t size)
+    ssize_t Interface::read(int fd, struct sockaddr *saddr, ssize_t saddr_size, uint8_t *msg, size_t size)
     {
         struct msghdr mhdr;
         struct iovec iov;
@@ -362,7 +362,7 @@ namespace ndppd
         return len;
     }
 
-    ssize_t iface::write(int fd, const Address &daddr, const uint8_t *msg, size_t size)
+    ssize_t Interface::write(int fd, const Address &daddr, const uint8_t *msg, size_t size)
     {
         struct sockaddr_in6 daddr_tmp;
         struct msghdr mhdr;
@@ -397,7 +397,7 @@ namespace ndppd
         return len;
     }
 
-    ssize_t iface::read_solicit(Address &saddr, Address &daddr, Address &taddr)
+    ssize_t Interface::read_solicit(Address &saddr, Address &daddr, Address &taddr)
     {
         struct sockaddr_ll t_saddr;
         uint8_t msg[256];
@@ -420,7 +420,7 @@ namespace ndppd
         saddr = Address(ip6h->ip6_src);
 
         // Ignore packets sent from this machine
-        if (iface::is_local(saddr) == true)
+        if (Interface::is_local(saddr) == true)
         {
             return 0;
         }
@@ -431,7 +431,7 @@ namespace ndppd
         return len;
     }
 
-    ssize_t iface::write_solicit(const Address &taddr)
+    ssize_t Interface::write_solicit(const Address &taddr)
     {
         char buf[128];
 
@@ -471,7 +471,7 @@ namespace ndppd
                                                    + sizeof(struct nd_opt_hdr) + 6);
     }
 
-    ssize_t iface::write_advert(const Address &daddr, const Address &taddr, bool router)
+    ssize_t Interface::write_advert(const Address &daddr, const Address &taddr, bool router)
     {
         char buf[128];
 
@@ -501,7 +501,7 @@ namespace ndppd
                                                    sizeof(struct nd_opt_hdr) + 6);
     }
 
-    ssize_t iface::read_advert(Address &saddr, Address &taddr)
+    ssize_t Interface::read_advert(Address &saddr, Address &taddr)
     {
         struct sockaddr_in6 t_saddr;
         uint8_t msg[256];
@@ -520,7 +520,7 @@ namespace ndppd
         saddr = Address(t_saddr.sin6_addr);
 
         // Ignore packets sent from this machine
-        if (iface::is_local(saddr) == true)
+        if (Interface::is_local(saddr) == true)
         {
             return 0;
         }
@@ -536,13 +536,13 @@ namespace ndppd
         return len;
     }
 
-    bool iface::is_local(const Address &addr)
+    bool Interface::is_local(const Address &addr)
     {
         // Netlink::is_local(..)
         return true;
     }
 
-    bool iface::handle_local(const Address &saddr, const Address &taddr)
+    bool Interface::handle_local(const Address &saddr, const Address &taddr)
     {
         for (const Address &adddress : Netlink::local_addresses())
         {
@@ -568,7 +568,7 @@ namespace ndppd
         return false;
     }
 
-    void iface::handle_reverse_advert(const Address &saddr, const std::string &ifname)
+    void Interface::handle_reverse_advert(const Address &saddr, const std::string &ifname)
     {
         if (!saddr.is_unicast())
             return;
@@ -598,7 +598,7 @@ namespace ndppd
         }
     }
 
-    void iface::fixup_pollfds()
+    void Interface::fixup_pollfds()
     {
         _pollfds.resize(_map.size() * 2);
 
@@ -606,7 +606,7 @@ namespace ndppd
 
         Logger::debug() << "iface::fixup_pollfds() _map.size()=" << _map.size();
 
-        for (std::map<std::string, std::weak_ptr<iface> >::iterator it = _map.begin();
+        for (std::map<std::string, std::weak_ptr<Interface> >::iterator it = _map.begin();
              it != _map.end(); it++)
         {
             auto ifa = it->second.lock();
@@ -626,12 +626,12 @@ namespace ndppd
         }
     }
 
-    void iface::cleanup()
+    void Interface::cleanup()
     {
-        for (std::map<std::string, std::weak_ptr<iface> >::iterator it = _map.begin();
+        for (std::map<std::string, std::weak_ptr<Interface> >::iterator it = _map.begin();
              it != _map.end();)
         {
-            std::map<std::string, std::weak_ptr<iface> >::iterator c_it = it++;
+            std::map<std::string, std::weak_ptr<Interface> >::iterator c_it = it++;
             if (c_it->second.expired())
             {
                 _map.erase(c_it);
@@ -639,7 +639,7 @@ namespace ndppd
         }
     }
 
-    int iface::poll_all()
+    int Interface::poll_all()
     {
         if (_map_dirty)
         {
@@ -669,7 +669,7 @@ namespace ndppd
             return 0;
         }
 
-        std::map<std::string, std::weak_ptr<iface> >::iterator i_it = _map.begin();
+        std::map<std::string, std::weak_ptr<Interface> >::iterator i_it = _map.begin();
 
         int i = 0;
 
@@ -690,7 +690,7 @@ namespace ndppd
                 continue;
             }
 
-            std::shared_ptr<iface> ifa = i_it->second.lock();
+            std::shared_ptr<Interface> ifa = i_it->second.lock();
 
             Address saddr, daddr, taddr;
             ssize_t size;
@@ -802,7 +802,7 @@ namespace ndppd
         return 0;
     }
 
-    int iface::allmulti(int state)
+    int Interface::allmulti(int state)
     {
         struct ifreq ifr;
 
@@ -847,7 +847,7 @@ namespace ndppd
         return old_state;
     }
 
-    int iface::promiscuous(int state)
+    int Interface::promiscuous(int state)
     {
         struct ifreq ifr;
 
@@ -892,27 +892,27 @@ namespace ndppd
         return old_state;
     }
 
-    const std::string &iface::name() const
+    const std::string &Interface::name() const
     {
         return _name;
     }
 
-    void iface::add_serves(const std::shared_ptr<Proxy> &pr)
+    void Interface::add_serves(const std::shared_ptr<Proxy> &pr)
     {
         _serves.push_back(pr);
     }
 
-    void iface::add_parent(const std::shared_ptr<Proxy> &pr)
+    void Interface::add_parent(const std::shared_ptr<Proxy> &pr)
     {
         _parents.push_back(pr);
     }
 
-    const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> iface::parents() const
+    const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> Interface::parents() const
     {
         return { _parents.cbegin(), _parents.cend() };
     }
 
-    const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> iface::serves() const
+    const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> Interface::serves() const
     {
         return { _serves.cbegin(), _serves.cend() };
     }

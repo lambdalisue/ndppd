@@ -19,7 +19,7 @@
 
 #include "ndppd.h"
 #include "proxy.h"
-#include "iface.h"
+#include "interface.h"
 #include "session.h"
 
 namespace ndppd
@@ -150,7 +150,7 @@ namespace ndppd
         return session;
     }
 
-    void Session::add_iface(const std::shared_ptr<iface> &ifa)
+    void Session::add_iface(const std::shared_ptr<Interface> &ifa)
     {
         if (std::find(_ifaces.begin(), _ifaces.end(), ifa) != _ifaces.end())
             return;

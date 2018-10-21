@@ -31,14 +31,14 @@
 
 namespace ndppd
 {
-    class iface;
+    class Interface;
 
     class Rule;
 
     class Proxy
     {
     public:
-        static std::shared_ptr<Proxy> create(const std::shared_ptr<iface> &ifa, bool promiscuous);
+        static std::shared_ptr<Proxy> create(const std::shared_ptr<Interface> &ifa, bool promiscuous);
 
         static std::shared_ptr<Proxy> find_aunt(const std::string &ifname, const Address &taddr);
 
@@ -55,11 +55,11 @@ namespace ndppd
 
         void remove_session(const std::shared_ptr<Session> &session);
 
-        std::shared_ptr<Rule> add_rule(const Cidr &cidr, const std::shared_ptr<iface> &ifa, bool autovia);
+        std::shared_ptr<Rule> add_rule(const Cidr &cidr, const std::shared_ptr<Interface> &ifa, bool autovia);
 
         std::shared_ptr<Rule> add_rule(const Cidr &cidr, bool aut = false);
 
-        const std::shared_ptr<iface> &ifa() const;
+        const std::shared_ptr<Interface> &ifa() const;
 
         bool promiscuous() const;
 
@@ -98,7 +98,7 @@ namespace ndppd
 
         std::weak_ptr<Proxy> _ptr;
 
-        std::shared_ptr<iface> _ifa;
+        std::shared_ptr<Interface> _ifa;
 
         std::list<std::shared_ptr<Rule> > _rules;
 

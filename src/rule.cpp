@@ -22,7 +22,7 @@
 #include "ndppd.h"
 #include "rule.h"
 #include "proxy.h"
-#include "iface.h"
+#include "interface.h"
 
 using namespace ndppd;
 
@@ -37,7 +37,7 @@ Rule::Rule()
 }
 
 std::shared_ptr<Rule>
-Rule::create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, const std::shared_ptr<iface> &ifa)
+Rule::create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, const std::shared_ptr<Interface> &ifa)
 {
     std::shared_ptr<Rule> rule(new Rule());
     rule->_ptr = rule;
@@ -86,7 +86,7 @@ const Cidr &Rule::cidr() const
     return _cidr;
 }
 
-std::shared_ptr<ndppd::iface> Rule::daughter() const
+std::shared_ptr<ndppd::Interface> Rule::daughter() const
 {
     return _daughter;
 }

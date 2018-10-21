@@ -33,7 +33,7 @@
 #include "socket.h"
 #include "conf.h"
 #include "cidr.h"
-#include "iface.h"
+#include "interface.h"
 #include "session.h"
 #include "proxy.h"
 #include "rule.h"
@@ -240,7 +240,7 @@ static bool configure(std::shared_ptr<conf> &cf)
 
             if (x_cf = ru_cf->find("iface"))
             {
-                std::shared_ptr<iface> ifa = iface::open_ifd(*x_cf);
+                std::shared_ptr<Interface> ifa = Interface::open_ifd(*x_cf);
                 if (!ifa)
                 {
                     return false;
@@ -262,9 +262,9 @@ static bool configure(std::shared_ptr<conf> &cf)
     }
 
     // Print out all the topology    
-    for (auto &i_it : iface::_map)
+    for (auto &i_it : Interface::_map)
     {
-        std::shared_ptr<iface> ifa = i_it.second.lock();
+        std::shared_ptr<Interface> ifa = i_it.second.lock();
 
         Logger::debug() << "iface " << ifa->name() << " {";
 
@@ -402,7 +402,7 @@ int main(int argc, char *argv[], char *env[])
     {
         Socket::poll();
 
-        if (iface::poll_all() < 0)
+        if (Interface::poll_all() < 0)
         {
             if (running)
             {

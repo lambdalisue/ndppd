@@ -28,7 +28,7 @@
 
 namespace ndppd
 {
-    class iface;
+    class Interface;
 
     class Proxy;
 
@@ -36,13 +36,13 @@ namespace ndppd
     {
     public:
         static std::shared_ptr<Rule>
-        create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, const std::shared_ptr<iface> &ifa);
+        create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, const std::shared_ptr<Interface> &ifa);
 
         static std::shared_ptr<Rule> create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, bool stc = true);
 
         const Cidr &cidr() const;
 
-        std::shared_ptr<iface> daughter() const;
+        std::shared_ptr<Interface> daughter() const;
 
         bool is_auto() const;
 
@@ -63,7 +63,7 @@ namespace ndppd
 
         std::weak_ptr<Proxy> _pr;
 
-        std::shared_ptr<iface> _daughter;
+        std::shared_ptr<Interface> _daughter;
 
         Cidr _cidr;
 

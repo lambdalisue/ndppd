@@ -21,7 +21,7 @@
 #include "ndppd.h"
 
 #include "proxy.h"
-#include "iface.h"
+#include "interface.h"
 #include "rule.h"
 #include "session.h"
 
@@ -63,9 +63,9 @@ namespace ndppd
         return std::shared_ptr<Proxy>();
     }
 
-    std::shared_ptr<Proxy> Proxy::create(const std::shared_ptr<iface> &ifa, bool promiscuous)
+    std::shared_ptr<Proxy> Proxy::create(const std::shared_ptr<Interface> &ifa, bool promiscuous)
     {
-        std::shared_ptr<Proxy> proxy(new class proxy());
+        std::shared_ptr<Proxy> proxy(new Proxy());
         proxy->_ptr = proxy;
         proxy->_ifa = ifa;
         proxy->_promiscuous = promiscuous;
@@ -81,7 +81,7 @@ namespace ndppd
 
     std::shared_ptr<Proxy> Proxy::open(const std::string &ifname, bool promiscuous)
     {
-        std::shared_ptr<iface> ifa = iface::open_pfd(ifname, promiscuous);
+        std::shared_ptr<Interface> ifa = Interface::open_pfd(ifname, promiscuous);
 
         if (!ifa)
         {
@@ -145,7 +145,7 @@ namespace ndppd
                 else
                 {
 
-                    std::shared_ptr<iface> ifa = rule->daughter();
+                    std::shared_ptr<Interface> ifa = rule->daughter();
                     se->add_iface(ifa);
 
 #ifdef WITH_ND_NETLINK
@@ -226,7 +226,7 @@ namespace ndppd
         }
     }
 
-    std::shared_ptr<Rule> Proxy::add_rule(const Cidr &cidr, const std::shared_ptr<iface> &ifa, bool autovia)
+    std::shared_ptr<Rule> Proxy::add_rule(const Cidr &cidr, const std::shared_ptr<Interface> &ifa, bool autovia)
     {
         std::shared_ptr<Rule> rule(Rule::create(_ptr.lock(), cidr, ifa));
         rule->autovia(autovia);
@@ -246,7 +246,7 @@ namespace ndppd
         _sessions.remove(session);
     }
 
-    const std::shared_ptr<iface> &Proxy::ifa() const
+    const std::shared_ptr<Interface> &Proxy::ifa() const
     {
         return _ifa;
     }

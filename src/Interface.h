@@ -36,15 +36,15 @@ namespace ndppd
 
     class Proxy;
 
-    class iface
+    class Interface
     {
     public:
         // Destructor.
-        ~iface();
+        ~Interface();
 
-        static std::shared_ptr<iface> open_ifd(const std::string &name);
+        static std::shared_ptr<Interface> open_ifd(const std::string &name);
 
-        static std::shared_ptr<iface> open_pfd(const std::string &name, bool promiscuous);
+        static std::shared_ptr<Interface> open_pfd(const std::string &name, bool promiscuous);
 
         static int poll_all();
 
@@ -77,7 +77,7 @@ namespace ndppd
 
         void add_parent(const std::shared_ptr<Proxy> &parent);
 
-        static std::map<std::string, std::weak_ptr<iface> > _map;
+        static std::map<std::string, std::weak_ptr<Interface> > _map;
 
         const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> parents() const;
 
@@ -97,7 +97,7 @@ namespace ndppd
         static void cleanup();
 
         // Weak pointer so this object can reference itself.
-        std::weak_ptr<iface> _ptr;
+        std::weak_ptr<Interface> _ptr;
 
         // The "generic" ICMPv6 socket for reading/writing NB_NEIGHBOR_ADVERT
         // messages as well as writing NB_NEIGHBOR_SOLICIT messages.
@@ -132,7 +132,7 @@ namespace ndppd
         int promiscuous(int state);
 
         // Constructor.
-        iface();
+        Interface();
 
 
     };

@@ -26,7 +26,7 @@ namespace ndppd
 {
     class Proxy;
 
-    class iface;
+    class Interface;
 
     class Session
     {
@@ -49,7 +49,7 @@ namespace ndppd
 
         // An array of interfaces this session is monitoring for
         // ND_NEIGHBOR_ADVERT on.
-        std::list<std::shared_ptr<iface> > _ifaces;
+        std::list<std::shared_ptr<Interface> > _ifaces;
 
         std::set<Address> _pending;
 
@@ -82,7 +82,7 @@ namespace ndppd
         static std::shared_ptr<Session>
         create(const std::shared_ptr<Proxy> &pr, const Address &taddr, bool autowire, bool keepalive, int retries);
 
-        void add_iface(const std::shared_ptr<iface> &ifa);
+        void add_iface(const std::shared_ptr<Interface> &ifa);
 
         void add_pending(const Address &addr);
 
