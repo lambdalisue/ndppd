@@ -20,7 +20,6 @@
 #include "ndppd.h"
 
 #include "proxy.h"
-#include "route.h"
 #include "iface.h"
 #include "rule.h"
 #include "session.h"
@@ -34,13 +33,13 @@ proxy::proxy() :
         _promiscuous(false), _retries(3) {
 }
 
-std::shared_ptr<proxy> proxy::find_aunt(const std::string &ifname, const address &taddr) {
+std::shared_ptr<proxy> proxy::find_aunt(const std::string &ifname, const Address &taddr) {
     for (auto &weak_proxy : _list) {
         std::shared_ptr<proxy> proxy = weak_proxy;
 
         bool has_addr = false;
         for (auto rule : proxy->_rules) {
-            if (rule->addr() == taddr) {
+            if (rule->cidr() % taddr) { // TODO
                 has_addr = true;
                 break;
             }
@@ -58,7 +57,7 @@ std::shared_ptr<proxy> proxy::find_aunt(const std::string &ifname, const address
 }
 
 std::shared_ptr<proxy> proxy::create(const std::shared_ptr<iface> &ifa, bool promiscuous) {
-    std::shared_ptr<proxy> proxy(new proxy());
+    std::shared_ptr<proxy> proxy(new class proxy());
     proxy->_ptr = proxy;
     proxy->_ifa = ifa;
     proxy->_promiscuous = promiscuous;
@@ -82,7 +81,7 @@ std::shared_ptr<proxy> proxy::open(const std::string &ifname, bool promiscuous) 
     return create(ifa, promiscuous);
 }
 
-std::shared_ptr<session> proxy::find_or_create_session(const address &taddr) {
+std::shared_ptr<session> proxy::find_or_create_session(const Address &taddr) {
     // Let's check this proxy's list of sessions to see if we can
     // find one with the same target address.
 
@@ -97,14 +96,16 @@ std::shared_ptr<session> proxy::find_or_create_session(const address &taddr) {
     // a matching rule instead, and then set up a new session.
 
     for (auto &rule : _rules) {
-        Logger::debug() << "checking " << rule->addr() << " against " << taddr;
+        Logger::debug() << "checking " << rule->cidr() << " against " << taddr;
 
-        if (rule->addr() == taddr) {
+        if (rule->cidr() % taddr) {
             if (!se) {
                 se = session::create(_ptr.lock(), taddr, _autowire, _keepalive, _retries);
             }
 
             if (rule->is_auto()) {
+                // TODO: Implement route support again
+                /*
                 std::shared_ptr<route> rt = route::find(taddr);
 
                 if (rt->ifname() == _ifa->name()) {
@@ -115,7 +116,7 @@ std::shared_ptr<session> proxy::find_or_create_session(const address &taddr) {
                     if (ifa && (ifa != rule->daughter())) {
                         se->add_iface(ifa);
                     }
-                }
+                }*/
             } else if (!rule->daughter()) {
                 // This rule doesn't have an interface, and thus we'll consider
                 // it "static" and immediately send the response.
@@ -145,7 +146,7 @@ std::shared_ptr<session> proxy::find_or_create_session(const address &taddr) {
     return se;
 }
 
-void proxy::handle_advert(const address &saddr, const address &taddr, const std::string &ifname, bool use_via) {
+void proxy::handle_advert(const Address &saddr, const Address &taddr, const std::string &ifname, bool use_via) {
     // If a session exists then process the advert in the context of the session
     for (auto &sess : _sessions) {
         if ((sess->taddr() == taddr)) {
@@ -155,7 +156,7 @@ void proxy::handle_advert(const address &saddr, const address &taddr, const std:
 }
 
 void
-proxy::handle_stateless_advert(const address &saddr, const address &taddr, const std::string &ifname, bool use_via) {
+proxy::handle_stateless_advert(const Address &saddr, const Address &taddr, const std::string &ifname, bool use_via) {
     Logger::debug()
             << "proxy::handle_stateless_advert() proxy=" << (ifa() ? ifa()->name() : "null") << ", taddr="
             << taddr.to_string() << ", ifname=" << ifname;
@@ -164,11 +165,12 @@ proxy::handle_stateless_advert(const address &saddr, const address &taddr, const
     if (!se) return;
 
     if (_autowire && se->status() == session::WAITING) {
-        se->handle_auto_wire(saddr, ifname, use_via);
+        // TODO
+        // se->handle_auto_wire(saddr, ifname, use_via);
     }
 }
 
-void proxy::handle_solicit(const address &saddr, const address &taddr, const std::string &ifname) {
+void proxy::handle_solicit(const Address &saddr, const Address &taddr, const std::string &ifname) {
     Logger::debug()
             << "proxy::handle_solicit()";
 
@@ -197,15 +199,15 @@ void proxy::handle_solicit(const address &saddr, const address &taddr, const std
     }
 }
 
-std::shared_ptr<rule> proxy::add_rule(const address &addr, const std::shared_ptr<iface> &ifa, bool autovia) {
-    std::shared_ptr<rule> ru(rule::create(_ptr.lock(), addr, ifa));
+std::shared_ptr<rule> proxy::add_rule(const Cidr &cidr, const std::shared_ptr<iface> &ifa, bool autovia) {
+    std::shared_ptr<rule> ru(rule::create(_ptr.lock(), cidr, ifa));
     ru->autovia(autovia);
     _rules.push_back(ru);
     return ru;
 }
 
-std::shared_ptr<rule> proxy::add_rule(const address &addr, bool aut) {
-    std::shared_ptr<rule> ru(rule::create(_ptr.lock(), addr, aut));
+std::shared_ptr<rule> proxy::add_rule(const Cidr &cidr, bool aut) {
+    std::shared_ptr<rule> ru(rule::create(_ptr.lock(), cidr, aut));
     _rules.push_back(ru);
     return ru;
 }

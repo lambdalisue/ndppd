@@ -17,6 +17,7 @@
 
 #include <vector>
 #include <string>
+#include <set>
 
 #include "ndppd.h"
 
@@ -31,7 +32,7 @@ private:
 
     std::weak_ptr<proxy> _pr;
 
-    address _saddr, _daddr, _taddr;
+    Address _saddr, _daddr, _taddr;
     
     bool _autowire;
     
@@ -39,15 +40,15 @@ private:
     
     bool _wired;
     
-    address _wired_via;
+    Address _wired_via;
     
     bool _touched;
 
     // An array of interfaces this session is monitoring for
     // ND_NEIGHBOR_ADVERT on.
     std::list<std::shared_ptr<iface> > _ifaces;
-    
-    std::list<std::shared_ptr<address> > _pending;
+
+    std::set<Address> _pending;
 
     // The remaining time in miliseconds the object will stay in the
     // interface's session array or cache.
@@ -75,17 +76,17 @@ public:
     // Destructor.
     ~session();
 
-    static std::shared_ptr<session> create(const std::shared_ptr<proxy>& pr, const address& taddr, bool autowire, bool keepalive, int retries);
+    static std::shared_ptr<session> create(const std::shared_ptr<proxy>& pr, const Address& taddr, bool autowire, bool keepalive, int retries);
 
     void add_iface(const std::shared_ptr<iface>& ifa);
     
-    void add_pending(const address& addr);
+    void add_pending(const Address& addr);
 
-    const address& taddr() const;
+    const Address& taddr() const;
 
-    const address& daddr() const;
+    const Address& daddr() const;
 
-    const address& saddr() const;
+    const Address& saddr() const;
     
     bool autowire() const;
     
@@ -105,15 +106,11 @@ public:
     
     void handle_advert();
 
-    void handle_advert(const address& saddr, const std::string& ifname, bool use_via);
-    
-    void handle_auto_wire(const address& saddr, const std::string& ifname, bool use_via);
-    
-    void handle_auto_unwire(const std::string& ifname);
+    void handle_advert(const Address& saddr, const std::string& ifname, bool use_via);
     
     void touch();
 
-    void send_advert(const address& daddr);
+    void send_advert(const Address& daddr);
 
     void send_solicit();
 

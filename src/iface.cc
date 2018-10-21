@@ -40,7 +40,6 @@
 #include <map>
 
 #include "ndppd.h"
-#include "route.h"
 #include "address.h"
 #include "netlink.h"
 
@@ -330,7 +329,7 @@ NDPPD_NS_BEGIN
         return len;
     }
 
-    ssize_t iface::write(int fd, const address &daddr, const uint8_t *msg, size_t size) {
+    ssize_t iface::write(int fd, const Address &daddr, const uint8_t *msg, size_t size) {
         struct sockaddr_in6 daddr_tmp;
         struct msghdr mhdr;
         struct iovec iov;
@@ -338,7 +337,7 @@ NDPPD_NS_BEGIN
         memset(&daddr_tmp, 0, sizeof(struct sockaddr_in6));
         daddr_tmp.sin6_family = AF_INET6;
         daddr_tmp.sin6_port = htons(IPPROTO_ICMPV6); // Needed?
-        memcpy(&daddr_tmp.sin6_addr, &daddr.const_addr(), sizeof(struct in6_addr));
+        memcpy(&daddr_tmp.sin6_addr, &daddr.c_addr(), sizeof(struct in6_addr));
 
         iov.iov_len = size;
         iov.iov_base = (caddr_t) msg;
@@ -363,7 +362,7 @@ NDPPD_NS_BEGIN
         return len;
     }
 
-    ssize_t iface::read_solicit(address &saddr, address &daddr, address &taddr) {
+    ssize_t iface::read_solicit(Address &saddr, Address &daddr, Address &taddr) {
         struct sockaddr_ll t_saddr;
         uint8_t msg[256];
         ssize_t len;
@@ -379,9 +378,9 @@ NDPPD_NS_BEGIN
         struct nd_neighbor_solicit *ns =
                 (struct nd_neighbor_solicit *) (msg + ETH_HLEN + sizeof(struct ip6_hdr));
 
-        taddr = ns->nd_ns_target;
-        daddr = ip6h->ip6_dst;
-        saddr = ip6h->ip6_src;
+        taddr = Address(ns->nd_ns_target);
+        daddr = Address(ip6h->ip6_dst);
+        saddr = Address(ip6h->ip6_src);
 
         // Ignore packets sent from this machine
         if (iface::is_local(saddr) == true) {
@@ -394,7 +393,7 @@ NDPPD_NS_BEGIN
         return len;
     }
 
-    ssize_t iface::write_solicit(const address &taddr) {
+    ssize_t iface::write_solicit(const Address &taddr) {
         char buf[128];
 
         memset(buf, 0, sizeof(buf));
@@ -410,21 +409,21 @@ NDPPD_NS_BEGIN
 
         ns->nd_ns_type = ND_NEIGHBOR_SOLICIT;
 
-        memcpy(&ns->nd_ns_target, &taddr.const_addr(), sizeof(struct in6_addr));
+        memcpy(&ns->nd_ns_target, &taddr.c_addr(), sizeof(struct in6_addr));
 
         memcpy(buf + sizeof(struct nd_neighbor_solicit) + sizeof(struct nd_opt_hdr),
                &hwaddr, 6);
 
         // FIXME: Alright, I'm lazy.
-        static address multicast("ff02::1:ff00:0000");
+        static Address multicast("ff02::1:ff00:0000");
 
-        address daddr;
+        Address daddr;
 
         daddr = multicast;
 
-        daddr.addr().s6_addr[13] = taddr.const_addr().s6_addr[13];
-        daddr.addr().s6_addr[14] = taddr.const_addr().s6_addr[14];
-        daddr.addr().s6_addr[15] = taddr.const_addr().s6_addr[15];
+        daddr.addr().s6_addr[13] = taddr.c_addr().s6_addr[13];
+        daddr.addr().s6_addr[14] = taddr.c_addr().s6_addr[14];
+        daddr.addr().s6_addr[15] = taddr.c_addr().s6_addr[15];
 
         Logger::debug() << "iface::write_solicit() taddr=" << taddr.to_string()
                         << ", daddr=" << daddr.to_string();
@@ -433,7 +432,7 @@ NDPPD_NS_BEGIN
                                                    + sizeof(struct nd_opt_hdr) + 6);
     }
 
-    ssize_t iface::write_advert(const address &daddr, const address &taddr, bool router) {
+    ssize_t iface::write_advert(const Address &daddr, const Address &taddr, bool router) {
         char buf[128];
 
         memset(buf, 0, sizeof(buf));
@@ -450,7 +449,7 @@ NDPPD_NS_BEGIN
         na->nd_na_type = ND_NEIGHBOR_ADVERT;
         na->nd_na_flags_reserved = (daddr.is_multicast() ? 0 : ND_NA_FLAG_SOLICITED) | (router ? ND_NA_FLAG_ROUTER : 0);
 
-        memcpy(&na->nd_na_target, &taddr.const_addr(), sizeof(struct in6_addr));
+        memcpy(&na->nd_na_target, &taddr.c_addr(), sizeof(struct in6_addr));
 
         memcpy(buf + sizeof(struct nd_neighbor_advert) + sizeof(struct nd_opt_hdr),
                &hwaddr, 6);
@@ -462,7 +461,7 @@ NDPPD_NS_BEGIN
                                                    sizeof(struct nd_opt_hdr) + 6);
     }
 
-    ssize_t iface::read_advert(address &saddr, address &taddr) {
+    ssize_t iface::read_advert(Address &saddr, Address &taddr) {
         struct sockaddr_in6 t_saddr;
         uint8_t msg[256];
         ssize_t len;
@@ -476,7 +475,7 @@ NDPPD_NS_BEGIN
             return -1;
         }
 
-        saddr = t_saddr.sin6_addr;
+        saddr = Address(t_saddr.sin6_addr);
 
         // Ignore packets sent from this machine
         if (iface::is_local(saddr) == true) {
@@ -486,7 +485,7 @@ NDPPD_NS_BEGIN
         if (((struct icmp6_hdr *) msg)->icmp6_type != ND_NEIGHBOR_ADVERT)
             return -1;
 
-        taddr = ((struct nd_neighbor_solicit *) msg)->nd_ns_target;
+        taddr = Address(((struct nd_neighbor_solicit *) msg)->nd_ns_target);
 
         Logger::debug() << "iface::read_advert() saddr=" << saddr.to_string() << ", taddr=" << taddr.to_string()
                         << ", len=" << len;
@@ -494,12 +493,12 @@ NDPPD_NS_BEGIN
         return len;
     }
 
-    bool iface::is_local(const address &addr) {
+    bool iface::is_local(const Address &addr) {
         // Netlink::is_local(..)
         return true;
     }
 
-    bool iface::handle_local(const address &saddr, const address &taddr) {
+    bool iface::handle_local(const Address &saddr, const Address &taddr) {
         for (const Address &adddress : Netlink::local_addresses()) {
             // Loop through all the serves that are using this iface to respond to NDP solicitation requests
             for (auto &weak_proxy : serves()) {
@@ -521,7 +520,7 @@ NDPPD_NS_BEGIN
         return false;
     }
 
-    void iface::handle_reverse_advert(const address &saddr, const std::string &ifname) {
+    void iface::handle_reverse_advert(const Address &saddr, const std::string &ifname) {
         if (!saddr.is_unicast())
             return;
 
@@ -538,7 +537,7 @@ NDPPD_NS_BEGIN
             // with the reverse direction (this helps improve connectivity and
             // latency in a full duplex setup)
             for (auto &rule : proxy->rules()) {
-                if (rule->addr() == saddr && rule->daughter()->name() == ifname) {
+                if (rule->cidr() % saddr && rule->daughter()->name() == ifname) {
                     Logger::debug() << " - generating artifical advertisement: " << ifname;
                     proxy->handle_stateless_advert(saddr, saddr, ifname, rule->autovia());
                 }
@@ -627,7 +626,7 @@ NDPPD_NS_BEGIN
 
             std::shared_ptr<iface> ifa = i_it->second.lock();
 
-            address saddr, daddr, taddr;
+            Address saddr, daddr, taddr;
             ssize_t size;
 
             if (is_pfd) {
@@ -695,9 +694,7 @@ NDPPD_NS_BEGIN
 
                     for (auto &rule : proxy->rules()) {
 
-                        if (rule->addr() == taddr &&
-                            rule->daughter() &&
-                            rule->daughter()->name() == ifa->name()) {
+                        if (rule->cidr() % taddr && rule->daughter() && rule->daughter()->name() == ifa->name()) {
                             is_relevant = true;
                             autovia = rule->autovia();
                             break;

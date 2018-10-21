@@ -71,3 +71,12 @@ bool Address::operator!=(const Address &address) const {
 bool Address::operator<(const ndppd::Address &address) const {
     return std::memcmp(&_addr, &address._addr, sizeof(in6_addr)) < 0;
 }
+
+Address::operator bool() const {
+    return _addr.s6_addr32[0] != 0 || _addr.s6_addr32[1] != 0 || _addr.s6_addr32[2] != 0 ||_addr.s6_addr32[3] != 0;
+}
+
+Logger &ndppd::operator<<(Logger &logger, const Address &address) {
+    logger << address.to_string();
+    return logger;
+}

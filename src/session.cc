@@ -25,11 +25,9 @@ NDPPD_NS_BEGIN
 
 std::list<std::weak_ptr<session> > session::_sessions;
 
-static address all_nodes = address("ff02::1");
-
 void session::update_all(int elapsed_time)
 {
-    for (std::list<std::weak_ptr<session> >::iterator it = _sessions.begin();
+    for (auto it = _sessions.begin();
             it != _sessions.end(); ) {
 
         auto se = it->lock();
@@ -108,15 +106,14 @@ session::~session()
 {
     Logger::debug() << "session::~session() this=" << Logger::format("%x", this);
     
-    if (_wired == true) {
-        for (std::list<std::shared_ptr<iface> >::iterator it = _ifaces.begin();
-            it != _ifaces.end(); it++) {
-            handle_auto_unwire((*it)->name());
+    if (_wired) {
+        for (auto &_iface : _ifaces) {
+            //handle_auto_unwire(_iface->name());
         }
     }
 }
 
-std::shared_ptr<session> session::create(const std::shared_ptr<proxy>& pr, const address& taddr, bool auto_wire, bool keepalive, int retries)
+std::shared_ptr<session> session::create(const std::shared_ptr<proxy>& pr, const Address& taddr, bool auto_wire, bool keepalive, int retries)
 {
     std::shared_ptr<session> se(new session());
 
@@ -147,30 +144,24 @@ void session::add_iface(const std::shared_ptr<iface>& ifa)
     _ifaces.push_back(ifa);
 }
 
-void session::add_pending(const address& addr)
+void session::add_pending(const Address& addr)
 {
-    for (std::list<std::shared_ptr<address> >::iterator ad = _pending.begin(); ad != _pending.end(); ad++) {
-        if (addr == (*ad))
-            return;
-    }
-
-    _pending.push_back(std::shared_ptr<address>(new address(addr)));
+    _pending.insert(Address(addr));
 }
 
 void session::send_solicit()
 {
     Logger::debug() << "session::send_solicit() (_ifaces.size() = " << _ifaces.size() << ")";
 
-    for (std::list<std::shared_ptr<iface> >::iterator it = _ifaces.begin();
-            it != _ifaces.end(); it++) {
-        Logger::debug() << " - " << (*it)->name();
-        (*it)->write_solicit(_taddr);
+    for (auto &iface : _ifaces) {
+        Logger::debug() << " - " << iface->name();
+        iface->write_solicit(_taddr);
     }
 }
 
 void session::touch()
 {
-    if (_touched == false)
+    if (!_touched)
     {
         _touched = true;
         
@@ -184,116 +175,16 @@ void session::touch()
     }
 }
 
-void session::send_advert(const address& daddr)
+void session::send_advert(const Address& daddr)
 {
     auto pr = _pr.lock();
     pr->ifa()->write_advert(daddr, _taddr, pr->router());
 }
 
-void session::handle_auto_wire(const address& saddr, const std::string& ifname, bool use_via)
+void session::handle_advert(const Address& saddr, const std::string& ifname, bool use_via)
 {
-    if (_wired == true && (_wired_via.is_empty() || _wired_via == saddr))
-        return;
-    
-    Logger::debug()
-        << "session::handle_auto_wire() taddr=" << _taddr << ", ifname=" << ifname;
-    
-    if (use_via == true &&
-        _taddr != saddr &&
-        saddr.is_unicast() == true &&
-        saddr.is_multicast() == false)
-    {
-        std::stringstream route_cmd;
-        route_cmd << "ip";
-        route_cmd << " " << "-6";
-        route_cmd << " " << "route";
-        route_cmd << " " << "replace";
-        route_cmd << " " << std::string(saddr);
-        route_cmd << " " << "dev";
-        route_cmd << " " << ifname;
-
-        Logger::debug()
-            << "session::system(" << route_cmd.str() << ")";
-        
-        system(route_cmd.str().c_str());
-        
-        _wired_via = saddr;
-    }
-    else
-        _wired_via.reset();
-    
-    {
-        std::stringstream route_cmd;
-        route_cmd << "ip";
-        route_cmd << " " << "-6";
-        route_cmd << " " << "route";
-        route_cmd << " " << "replace";
-        route_cmd << " " << std::string(_taddr);
-        if (_wired_via.is_empty() == false) {
-            route_cmd << " " << "via";
-            route_cmd << " " << std::string(_wired_via);
-        }
-        route_cmd << " " << "dev";
-        route_cmd << " " << ifname;
-
-        Logger::debug()
-            << "session::system(" << route_cmd.str() << ")";
-
-        system(route_cmd.str().c_str());
-    }
-    
-    _wired = true;
-}
-
-void session::handle_auto_unwire(const std::string& ifname)
-{
-    Logger::debug()
-        << "session::handle_auto_unwire() taddr=" << _taddr << ", ifname=" << ifname;
-    
-    {
-        std::stringstream route_cmd;
-        route_cmd << "ip";
-        route_cmd << " " << "-6";
-        route_cmd << " " << "route";
-        route_cmd << " " << "flush";
-        route_cmd << " " << std::string(_taddr);
-        if (_wired_via.is_empty() == false) {
-            route_cmd << " " << "via";
-            route_cmd << " " << std::string(_wired_via);
-        }
-        route_cmd << " " << "dev";
-        route_cmd << " " << ifname;
-
-        Logger::debug()
-            << "session::system(" << route_cmd.str() << ")";
-
-        system(route_cmd.str().c_str());
-    }
-    
-    if (_wired_via.is_empty() == false) {
-        std::stringstream route_cmd;
-        route_cmd << "ip";
-        route_cmd << " " << "-6";
-        route_cmd << " " << "route";
-        route_cmd << " " << "flush";
-        route_cmd << " " << std::string(_wired_via);
-        route_cmd << " " << "dev";
-        route_cmd << " " << ifname;
-
-        Logger::debug()
-            << "session::system(" << route_cmd.str() << ")";
-
-        system(route_cmd.str().c_str());
-    }
-    
-    _wired = false;
-    _wired_via.reset();
-}
-
-void session::handle_advert(const address& saddr, const std::string& ifname, bool use_via)
-{
-    if (_autowire == true && _status == WAITING) {
-        handle_auto_wire(saddr, ifname, use_via);
+    if (_autowire && _status == WAITING) {
+        // handle_auto_wire(saddr, ifname, use_via);
     }
     
     handle_advert();
@@ -317,19 +208,15 @@ void session::handle_advert()
     _fails  = 0;
     
     if (!_pending.empty()) {
-        for (std::list<std::shared_ptr<address> >::iterator ad = _pending.begin();
-                ad != _pending.end(); ad++) {
-            std::shared_ptr<address> addr = (*ad);
-            Logger::debug() << " - forward to " << *addr;
-
-            send_advert(addr);
+        for (auto &address : _pending) {
+            Logger::debug() << " - forward to " << address;
+            send_advert(address);
         }
-
         _pending.clear();
     }
 }
 
-const address& session::taddr() const
+const Address& session::taddr() const
 {
     return _taddr;
 }

@@ -17,6 +17,7 @@
 #pragma once
 
 #include <netinet/in.h>
+#include "logger.h"
 
 namespace ndppd {
     class Address {
@@ -41,7 +42,12 @@ namespace ndppd {
         bool operator!=(const Address &address) const;
         bool operator<(const Address &address) const;
 
+        explicit operator bool() const;
+
     private:
         in6_addr _addr;
     };
+
+    Logger &operator<<(Logger &logger, const Address &address);
+
 }

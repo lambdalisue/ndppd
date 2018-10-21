@@ -23,6 +23,7 @@
 #include <sys/poll.h>
 
 #include "ndppd.h"
+#include "cidr.h"
 
 NDPPD_NS_BEGIN
 
@@ -31,17 +32,17 @@ class proxy;
 
 class rule {
 public:
-    static std::shared_ptr<rule> create(const std::shared_ptr<proxy>& pr, const address& addr, const std::shared_ptr<iface>& ifa);
+    static std::shared_ptr<rule> create(const std::shared_ptr<proxy>& pr, const Cidr& cidr, const std::shared_ptr<iface>& ifa);
 
-    static std::shared_ptr<rule> create(const std::shared_ptr<proxy>& pr, const address& addr, bool stc = true);
+    static std::shared_ptr<rule> create(const std::shared_ptr<proxy>& pr, const Cidr& cidr, bool stc = true);
 
-    const address& addr() const;
+    const Cidr& cidr() const;
 
     std::shared_ptr<iface> daughter() const;
 
     bool is_auto() const;
 
-    bool check(const address& addr) const;
+    bool check(const Address& addr) const;
 
     static bool any_auto();
     
@@ -60,7 +61,7 @@ private:
 
     std::shared_ptr<iface> _daughter;
 
-    address _addr;
+    Cidr _cidr;
 
     bool _aut;
 
@@ -74,20 +75,5 @@ private:
 
     rule();
 };
-
-class interface {
-public:
-    // List of IPv6 addresses on this interface
-    std::list<address> addresses;
-
-    // Index of this interface
-    int ifindex;
-
-    // Name of this interface.
-    std::string _name;
-
-};
-
-extern std::vector<interface> interfaces;
 
 NDPPD_NS_END

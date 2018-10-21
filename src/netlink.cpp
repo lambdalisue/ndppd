@@ -147,7 +147,7 @@ void Netlink::test() {
 
         for (; RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
             if (rta->rta_type == RTA_DST) {
-                std::cout << address(*(in6_addr *) RTA_DATA(rta)).to_string() << std::endl;
+
             }
         }
     }

@@ -13,6 +13,7 @@
 //
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,9 +24,7 @@
 #include "proxy.h"
 #include "iface.h"
 
-NDPPD_NS_BEGIN
-
-std::vector<interface> interfaces;
+using namespace ndppd;
 
 bool rule::_any_aut = false;
 
@@ -37,13 +36,13 @@ rule::rule()
 {
 }
 
-std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const address& addr, const std::shared_ptr<iface>& ifa)
+std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const Cidr& cidr, const std::shared_ptr<iface>& ifa)
 {
     std::shared_ptr<rule> ru(new rule());
     ru->_ptr  = ru;
     ru->_pr   = pr;
     ru->_daughter  = ifa;
-    ru->_addr = addr;
+    ru->_cidr = cidr;
     ru->_aut  = false;
     _any_iface = true;
     unsigned int ifindex;
@@ -57,17 +56,17 @@ std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const addre
     if_add_to_list(ifindex, ifa);
 #endif
 
-    Logger::debug() << "rule::create() if=" << pr->ifa()->name() << ", slave=" << ifa->name() << ", addr=" << addr;
+    Logger::debug() << "rule::create() if=" << pr->ifa()->name() << ", slave=" << ifa->name() << ", cidr=" << cidr;
 
     return ru;
 }
 
-std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const address& addr, bool aut)
+std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const Cidr& cidr, bool aut)
 {
     std::shared_ptr<rule> ru(new rule());
     ru->_ptr   = ru;
     ru->_pr    = pr;
-    ru->_addr  = addr;
+    ru->_cidr  = cidr;
     ru->_aut   = aut;
     _any_aut   = _any_aut || aut;
     
@@ -75,18 +74,18 @@ std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const addre
         _any_static = true;
 
     Logger::debug()
-        << "rule::create() if=" << pr->ifa()->name().c_str() << ", addr=" << addr
+        << "rule::create() if=" << pr->ifa()->name().c_str() << ", cidr=" << cidr
         << ", auto=" << (aut ? "yes" : "no");
 
     return ru;
 }
 
-const address& rule::addr() const
+const Cidr& rule::cidr() const
 {
-    return _addr;
+    return _cidr;
 }
 
-std::shared_ptr<iface> rule::daughter() const
+std::shared_ptr<ndppd::iface> rule::daughter() const
 {
     return _daughter;
 }
@@ -121,9 +120,8 @@ bool rule::any_static()
     return _any_static;
 }
 
-bool rule::check(const address& addr) const
+bool rule::check(const Address& addr) const
 {
-    return _addr == addr;
+    return _cidr % addr;
 }
 
-NDPPD_NS_END

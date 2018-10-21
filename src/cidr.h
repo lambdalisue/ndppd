@@ -44,5 +44,5 @@ namespace ndppd {
         int _prefix;
     };
 
-
+    Logger &operator<<(Logger &logger, const Cidr &cidr);
 }

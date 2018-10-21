@@ -347,3 +347,9 @@ bool Cidr::operator%(const Address &address) const {
              ((address.c_addr().s6_addr32[2] ^ _addr.s6_addr32[2]) & mask[2]) |
              ((address.c_addr().s6_addr32[3] ^ _addr.s6_addr32[3]) & mask[3]));
 }
+
+Logger &ndppd::operator<<(Logger &logger, const Cidr &cidr) {
+    logger << cidr.to_string();
+    return logger;
+}
+

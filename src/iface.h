@@ -25,6 +25,7 @@
 
 #include "ndppd.h"
 #include "range.h"
+#include "address.h"
 
 NDPPD_NS_BEGIN
 
@@ -45,25 +46,25 @@ public:
 
     ssize_t read(int fd, struct sockaddr* saddr, ssize_t saddr_size, uint8_t* msg, size_t size);
 
-    ssize_t write(int fd, const address& daddr, const uint8_t* msg, size_t size);
+    ssize_t write(int fd, const Address& daddr, const uint8_t* msg, size_t size);
 
     // Writes a NB_NEIGHBOR_SOLICIT message to the _ifd socket.
-    ssize_t write_solicit(const address& taddr);
+    ssize_t write_solicit(const Address& taddr);
 
     // Writes a NB_NEIGHBOR_ADVERT message to the _ifd socket;
-    ssize_t write_advert(const address& daddr, const address& taddr, bool router);
+    ssize_t write_advert(const Address& daddr, const Address& taddr, bool router);
 
     // Reads a NB_NEIGHBOR_SOLICIT message from the _pfd socket.
-    ssize_t read_solicit(address& saddr, address& daddr, address& taddr);
+    ssize_t read_solicit(Address& saddr, Address& daddr, Address& taddr);
 
     // Reads a NB_NEIGHBOR_ADVERT message from the _ifd socket;
-    ssize_t read_advert(address& saddr, address& taddr);
+    ssize_t read_advert(Address& saddr, Address& taddr);
     
-    bool handle_local(const address& saddr, const address& taddr);
+    bool handle_local(const Address& saddr, const Address& taddr);
     
-    bool is_local(const address& addr);
+    bool is_local(const Address& addr);
     
-    void handle_reverse_advert(const address& saddr, const std::string& ifname);
+    void handle_reverse_advert(const Address& saddr, const std::string& ifname);
 
     // Returns the name of the interface.
     const std::string& name() const;

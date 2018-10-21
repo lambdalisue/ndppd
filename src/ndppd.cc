@@ -29,7 +29,6 @@
 #include <unistd.h>
 
 #include "ndppd.h"
-#include "route.h"
 
 #include "netlink.h"
 #include "socket.h"
@@ -96,7 +95,7 @@ static std::shared_ptr<conf> load_config(const std::string &path) {
                 return {};
             }
 
-            address addr(*ru_cf);
+            Cidr addr(*ru_cf);
 
             if (x_cf = ru_cf->find("iface")) {
                 if (ru_cf->find("static") || ru_cf->find("auto")) {
@@ -136,11 +135,6 @@ static std::shared_ptr<conf> load_config(const std::string &path) {
 
 static bool configure(std::shared_ptr<conf> &cf) {
     std::shared_ptr<conf> x_cf;
-
-    if (!(x_cf = cf->find("route-ttl")))
-        route::ttl(30000);
-    else
-        route::ttl(*x_cf);
 
     std::list<std::shared_ptr<rule> > myrules;
 
@@ -208,7 +202,7 @@ static bool configure(std::shared_ptr<conf> &cf) {
         for (r_it = rules.begin(); r_it != rules.end(); r_it++) {
             std::shared_ptr<conf> ru_cf = *r_it;
 
-            address addr(*ru_cf);
+            Cidr addr(*ru_cf);
 
             bool autovia = false;
             if (!(x_cf = ru_cf->find("autovia")))
@@ -247,7 +241,7 @@ static bool configure(std::shared_ptr<conf> &cf) {
 
             for (auto &rule : proxy->rules()) {
                 Logger::debug() << "    " << "rule " << Logger::format("%x", rule.get()) << " {";
-                Logger::debug() << "      " << "taddr " << rule->addr() << ";";
+                Logger::debug() << "      " << "taddr " << rule->cidr() << ";";
                 if (rule->is_auto())
                     Logger::debug() << "      " << "auto;";
                 else if (!rule->daughter())
@@ -388,9 +382,6 @@ int main(int argc, char *argv[], char *env[]) {
 
         t1.tv_sec = t2.tv_sec;
         t1.tv_usec = t2.tv_usec;
-
-        if (rule::any_auto())
-            route::update(elapsed_time);
 
         session::update_all(elapsed_time);
     }
