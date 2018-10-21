@@ -22,6 +22,7 @@
 #include <sys/poll.h>
 
 #include "ndppd.h"
+#include "range.h"
 
 NDPPD_NS_BEGIN
 
@@ -85,6 +86,11 @@ public:
     int deadtime() const;
 
     void deadtime(int val);
+
+    Range<std::list<std::shared_ptr<rule> >::const_iterator> rules() const {
+        return {_rules.cbegin(), _rules.cend()};
+    }
+
 
 private:
     static std::list<std::shared_ptr<proxy> > _list;

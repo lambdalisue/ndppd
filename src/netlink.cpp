@@ -63,8 +63,8 @@ void Netlink::finalize() {
     _socket.reset();
 }
 
-const std::set<Address> &Netlink::local_addresses() {
-    return ::local_addresses;
+const Range<std::set<Address>::const_iterator> Netlink::local_addresses() {
+    return {::local_addresses.cbegin(), ::local_addresses.cend()};
 }
 
 void Netlink::load_local_ips() {
@@ -102,6 +102,10 @@ void Netlink::load_local_ips() {
                 Logger::debug() << "Unexpected NL message";
         }
     }
+
+    for (auto a : local_addresses())
+        std::cout << a.to_string() << std::endl;
+
 }
 
 bool Netlink::is_local(const Address &address) {

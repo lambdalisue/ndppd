@@ -507,38 +507,25 @@ bool iface::is_local(const address& addr)
     return true;
 }
 
-bool iface::handle_local(const address& saddr, const address& taddr)
-{
+bool iface::handle_local(const address& saddr, const address& taddr) {
     for (const Address &adddress : Netlink::local_addresses()) {
+        // Loop through all the serves that are using this iface to respond to NDP solicitation requests
+        for (auto pit = serves_begin(); pit != serves_end(); pit++) {
+            auto proxy = pit->lock();
+            if (!proxy) continue;
 
-    }
+            for (auto it = proxy->rules_begin(); it != proxy->rules_end(); it++) {
+                std::shared_ptr<rule> ru = *it;
 
-/*
-
-    // Check if the address is for an interface we own that is attached to
-    // one of the slave interfaces    
-    for (std::list<std::shared_ptr<route> >::iterator ad = address::addresses_begin(); ad != address::addresses_end(); ad++)
-    {
-        if ((*ad)->addr() == taddr)
-        {
-            // Loop through all the serves that are using this iface to respond to NDP solicitation requests
-            for (std::list<std::weak_ptr<proxy> >::iterator pit = serves_begin(); pit != serves_end(); pit++) {
-                std::shared_ptr<proxy> pr = pit->lock();
-                if (!pr) continue;
-                
-                for (std::list<std::shared_ptr<rule> >::iterator it = pr->rules_begin(); it != pr->rules_end(); it++) {
-                    std::shared_ptr<rule> ru = *it;
-
-                    if (ru->daughter() && ru->daughter()->name() == (*ad)->ifname())
-                    {
-                        Logger::debug() << "proxy::handle_solicit() found local taddr=" << taddr;
-                        write_advert(saddr, taddr, false);
-                        return true;
-                    }
+                //if (ru->daughter() && ru->daughter()->name() == (*ad)->ifname())
+                {
+                    Logger::debug() << "proxy::handle_solicit() found local taddr=" << taddr;
+                    write_advert(saddr, taddr, false);
+                    return true;
                 }
             }
         }
-    }*/
+    }
     
     return false;
 }

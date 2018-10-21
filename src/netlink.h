@@ -21,24 +21,18 @@
 
 #include "socket.h"
 #include "address.h"
+#include "range.h"
 
 namespace ndppd {
 
-    class NetlinkAddress {
-    public:
-        NetlinkAddress(const Address &address, int interface);
-    };
 
-    class NetlinkRoute {
-
-    };
 
     class Netlink {
     public:
         static void initialize();
         static void finalize();
 
-        static const std::set<Address> &local_addresses();
+        static const Range<std::set<Address>::const_iterator> local_addresses();
         static void load_local_ips();
         static bool is_local(const Address &address);
 
