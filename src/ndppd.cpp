@@ -86,7 +86,7 @@ static std::shared_ptr<conf> load_config(const std::string &path)
     std::vector<std::shared_ptr<conf> > proxies(cf->find_all("proxy"));
 
     for (p_it = proxies.begin(); p_it != proxies.end(); p_it++)
-    {
+{
         std::shared_ptr<conf> pr_cf = *p_it;
 
         if (pr_cf->empty())
