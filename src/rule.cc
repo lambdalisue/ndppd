@@ -26,25 +26,25 @@
 
 using namespace ndppd;
 
-bool rule::_any_aut = false;
+bool Rule::_any_aut = false;
 
-bool rule::_any_iface = false;
+bool Rule::_any_iface = false;
 
-bool rule::_any_static = false;
+bool Rule::_any_static = false;
 
-rule::rule()
+Rule::Rule()
 {
 }
 
-std::shared_ptr<rule>
-rule::create(const std::shared_ptr<proxy> &pr, const Cidr &cidr, const std::shared_ptr<iface> &ifa)
+std::shared_ptr<Rule>
+Rule::create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, const std::shared_ptr<iface> &ifa)
 {
-    std::shared_ptr<rule> ru(new rule());
-    ru->_ptr = ru;
-    ru->_pr = pr;
-    ru->_daughter = ifa;
-    ru->_cidr = cidr;
-    ru->_aut = false;
+    std::shared_ptr<Rule> rule(new Rule());
+    rule->_ptr = rule;
+    rule->_pr = pr;
+    rule->_daughter = ifa;
+    rule->_cidr = cidr;
+    rule->_aut = false;
     _any_iface = true;
     unsigned int ifindex;
 
@@ -59,16 +59,16 @@ rule::create(const std::shared_ptr<proxy> &pr, const Cidr &cidr, const std::shar
 
     Logger::debug() << "rule::create() if=" << pr->ifa()->name() << ", slave=" << ifa->name() << ", cidr=" << cidr;
 
-    return ru;
+    return rule;
 }
 
-std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy> &pr, const Cidr &cidr, bool aut)
+std::shared_ptr<Rule> Rule::create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, bool aut)
 {
-    std::shared_ptr<rule> ru(new rule());
-    ru->_ptr = ru;
-    ru->_pr = pr;
-    ru->_cidr = cidr;
-    ru->_aut = aut;
+    std::shared_ptr<Rule> rule(new Rule());
+    rule->_ptr = rule;
+    rule->_pr = pr;
+    rule->_cidr = cidr;
+    rule->_aut = aut;
     _any_aut = _any_aut || aut;
 
     if (aut == false)
@@ -78,50 +78,50 @@ std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy> &pr, const Cidr 
             << "rule::create() if=" << pr->ifa()->name().c_str() << ", cidr=" << cidr
             << ", auto=" << (aut ? "yes" : "no");
 
-    return ru;
+    return rule;
 }
 
-const Cidr &rule::cidr() const
+const Cidr &Rule::cidr() const
 {
     return _cidr;
 }
 
-std::shared_ptr<ndppd::iface> rule::daughter() const
+std::shared_ptr<ndppd::iface> Rule::daughter() const
 {
     return _daughter;
 }
 
-bool rule::is_auto() const
+bool Rule::is_auto() const
 {
     return _aut;
 }
 
-bool rule::autovia() const
+bool Rule::autovia() const
 {
     return _autovia;
 }
 
-void rule::autovia(bool val)
+void Rule::autovia(bool val)
 {
     _autovia = val;
 }
 
-bool rule::any_auto()
+bool Rule::any_auto()
 {
     return _any_aut;
 }
 
-bool rule::any_iface()
+bool Rule::any_iface()
 {
     return _any_iface;
 }
 
-bool rule::any_static()
+bool Rule::any_static()
 {
     return _any_static;
 }
 
-bool rule::check(const Address &addr) const
+bool Rule::check(const Address &addr) const
 {
     return _cidr % addr;
 }

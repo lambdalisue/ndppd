@@ -27,19 +27,19 @@
 
 namespace ndppd
 {
-    std::list<std::shared_ptr<proxy> > proxy::_list;
+    std::list<std::shared_ptr<Proxy> > Proxy::_list;
 
-    proxy::proxy() :
+    Proxy::Proxy() :
             _router(true), _ttl(30000), _deadtime(3000), _timeout(500), _autowire(false), _keepalive(true),
             _promiscuous(false), _retries(3)
     {
     }
 
-    std::shared_ptr<proxy> proxy::find_aunt(const std::string &ifname, const Address &taddr)
+    std::shared_ptr<Proxy> Proxy::find_aunt(const std::string &ifname, const Address &taddr)
     {
         for (auto &weak_proxy : _list)
         {
-            std::shared_ptr<proxy> proxy = weak_proxy;
+            std::shared_ptr<Proxy> proxy = weak_proxy;
 
             bool has_addr = false;
             for (const auto &rule : proxy->_rules)
@@ -60,12 +60,12 @@ namespace ndppd
                 return proxy;
         }
 
-        return std::shared_ptr<proxy>();
+        return std::shared_ptr<Proxy>();
     }
 
-    std::shared_ptr<proxy> proxy::create(const std::shared_ptr<iface> &ifa, bool promiscuous)
+    std::shared_ptr<Proxy> Proxy::create(const std::shared_ptr<iface> &ifa, bool promiscuous)
     {
-        std::shared_ptr<proxy> proxy(new class proxy());
+        std::shared_ptr<Proxy> proxy(new class proxy());
         proxy->_ptr = proxy;
         proxy->_ifa = ifa;
         proxy->_promiscuous = promiscuous;
@@ -79,30 +79,30 @@ namespace ndppd
         return proxy;
     }
 
-    std::shared_ptr<proxy> proxy::open(const std::string &ifname, bool promiscuous)
+    std::shared_ptr<Proxy> Proxy::open(const std::string &ifname, bool promiscuous)
     {
         std::shared_ptr<iface> ifa = iface::open_pfd(ifname, promiscuous);
 
         if (!ifa)
         {
-            return std::shared_ptr<proxy>();
+            return std::shared_ptr<Proxy>();
         }
 
         return create(ifa, promiscuous);
     }
 
-    std::shared_ptr<session> proxy::find_or_create_session(const Address &taddr)
+    std::shared_ptr<Session> Proxy::find_or_create_session(const Address &taddr)
     {
         // Let's check this proxy's list of sessions to see if we can
         // find one with the same target address.
 
-        for (auto &_session : _sessions)
+        for (auto &session : _sessions)
         {
-            if (_session->taddr() == taddr)
-                return _session;
+            if (session->taddr() == taddr)
+                return session;
         }
 
-        std::shared_ptr<session> se;
+        std::shared_ptr<Session> se;
 
         // Since we couldn't find a session that matched, we'll try to find
         // a matching rule instead, and then set up a new session.
@@ -115,7 +115,7 @@ namespace ndppd
             {
                 if (!se)
                 {
-                    se = session::create(_ptr.lock(), taddr, _autowire, _keepalive, _retries);
+                    se = Session::create(_ptr.lock(), taddr, _autowire, _keepalive, _retries);
                 }
 
                 if (rule->is_auto())
@@ -167,166 +167,166 @@ namespace ndppd
         return se;
     }
 
-    void proxy::handle_advert(const Address &saddr, const Address &taddr, const std::string &ifname, bool use_via)
+    void Proxy::handle_advert(const Address &saddr, const Address &taddr, const std::string &ifname, bool use_via)
     {
         // If a session exists then process the advert in the context of the session
-        for (auto &sess : _sessions)
+        for (auto &session : _sessions)
         {
-            if ((sess->taddr() == taddr))
+            if ((session->taddr() == taddr))
             {
-                sess->handle_advert(saddr, ifname, use_via);
+                session->handle_advert(saddr, ifname, use_via);
             }
         }
     }
 
-    void proxy::handle_stateless_advert(const Address &saddr, const Address &taddr,
+    void Proxy::handle_stateless_advert(const Address &saddr, const Address &taddr,
                                         const std::string &ifname, bool use_via)
     {
         Logger::debug() << "proxy::handle_stateless_advert() proxy=" << (ifa() ? ifa()->name() : "null") << ", taddr="
                         << taddr.to_string() << ", ifname=" << ifname;
 
-        std::shared_ptr<session> se = find_or_create_session(taddr);
-        if (!se) return;
+        std::shared_ptr<Session> session = find_or_create_session(taddr);
+        if (!session) return;
 
-        if (_autowire && se->status() == session::WAITING)
+        if (_autowire && session->status() == Session::WAITING)
         {
             // TODO
             // se->handle_auto_wire(saddr, ifname, use_via);
         }
     }
 
-    void proxy::handle_solicit(const Address &saddr, const Address &taddr, const std::string &ifname)
+    void Proxy::handle_solicit(const Address &saddr, const Address &taddr, const std::string &ifname)
     {
         Logger::debug() << "proxy::handle_solicit()";
 
         // Otherwise find or create a session to scan for this address
-        std::shared_ptr<session> se = find_or_create_session(taddr);
-        if (!se) return;
+        std::shared_ptr<Session> session = find_or_create_session(taddr);
+        if (!session) return;
 
         // Touching the session will cause an NDP advert to be transmitted to all
         // the daughters
-        se->touch();
+        session->touch();
 
         // If our session is confirmed then we can respoond with an advert otherwise
         // subscribe so that if it does become active we can notify everyone
         if (saddr != taddr)
         {
-            switch (se->status())
+            switch (session->status())
             {
-                case session::WAITING:
-                case session::INVALID:
-                    se->add_pending(saddr);
+                case Session::WAITING:
+                case Session::INVALID:
+                    session->add_pending(saddr);
                     break;
 
-                case session::VALID:
-                case session::RENEWING:
-                    se->send_advert(saddr);
+                case Session::VALID:
+                case Session::RENEWING:
+                    session->send_advert(saddr);
                     break;
             }
         }
     }
 
-    std::shared_ptr<rule> proxy::add_rule(const Cidr &cidr, const std::shared_ptr<iface> &ifa, bool autovia)
+    std::shared_ptr<Rule> Proxy::add_rule(const Cidr &cidr, const std::shared_ptr<iface> &ifa, bool autovia)
     {
-        std::shared_ptr<rule> ru(rule::create(_ptr.lock(), cidr, ifa));
-        ru->autovia(autovia);
-        _rules.push_back(ru);
-        return ru;
+        std::shared_ptr<Rule> rule(Rule::create(_ptr.lock(), cidr, ifa));
+        rule->autovia(autovia);
+        _rules.push_back(rule);
+        return rule;
     }
 
-    std::shared_ptr<rule> proxy::add_rule(const Cidr &cidr, bool aut)
+    std::shared_ptr<Rule> Proxy::add_rule(const Cidr &cidr, bool aut)
     {
-        std::shared_ptr<rule> ru(rule::create(_ptr.lock(), cidr, aut));
-        _rules.push_back(ru);
-        return ru;
+        std::shared_ptr<Rule> rule(Rule::create(_ptr.lock(), cidr, aut));
+        _rules.push_back(rule);
+        return rule;
     }
 
-    void proxy::remove_session(const std::shared_ptr<session> &se)
+    void Proxy::remove_session(const std::shared_ptr<Session> &session)
     {
-        _sessions.remove(se);
+        _sessions.remove(session);
     }
 
-    const std::shared_ptr<iface> &proxy::ifa() const
+    const std::shared_ptr<iface> &Proxy::ifa() const
     {
         return _ifa;
     }
 
-    bool proxy::promiscuous() const
+    bool Proxy::promiscuous() const
     {
         return _promiscuous;
     }
 
-    bool proxy::router() const
+    bool Proxy::router() const
     {
         return _router;
     }
 
-    void proxy::router(bool val)
+    void Proxy::router(bool val)
     {
         _router = val;
     }
 
-    bool proxy::autowire() const
+    bool Proxy::autowire() const
     {
         return _autowire;
     }
 
-    void proxy::autowire(bool val)
+    void Proxy::autowire(bool val)
     {
         _autowire = val;
     }
 
-    int proxy::retries() const
+    int Proxy::retries() const
     {
         return _retries;
     }
 
-    void proxy::retries(int val)
+    void Proxy::retries(int val)
     {
         _retries = val;
     }
 
-    bool proxy::keepalive() const
+    bool Proxy::keepalive() const
     {
         return _keepalive;
     }
 
-    void proxy::keepalive(bool val)
+    void Proxy::keepalive(bool val)
     {
         _keepalive = val;
     }
 
-    int proxy::ttl() const
+    int Proxy::ttl() const
     {
         return _ttl;
     }
 
-    void proxy::ttl(int val)
+    void Proxy::ttl(int val)
     {
         _ttl = (val >= 0) ? val : 30000;
     }
 
-    int proxy::deadtime() const
+    int Proxy::deadtime() const
     {
         return _deadtime;
     }
 
-    void proxy::deadtime(int val)
+    void Proxy::deadtime(int val)
     {
         _deadtime = (val >= 0) ? val : 30000;
     }
 
-    int proxy::timeout() const
+    int Proxy::timeout() const
     {
         return _timeout;
     }
 
-    void proxy::timeout(int val)
+    void Proxy::timeout(int val)
     {
         _timeout = (val >= 0) ? val : 500;
     }
 
-    const Range<std::list<std::shared_ptr<rule> >::const_iterator> proxy::rules() const
+    const Range<std::list<std::shared_ptr<Rule> >::const_iterator> Proxy::rules() const
     {
         return { _rules.cbegin(), _rules.cend() };
     }

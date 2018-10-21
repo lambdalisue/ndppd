@@ -578,7 +578,7 @@ namespace ndppd
         // Loop through all the parents that forward new NDP soliciation requests to this interface
         for (auto &weak_proxy : parents())
         {
-            std::shared_ptr<proxy> proxy = weak_proxy.lock();
+            std::shared_ptr<Proxy> proxy = weak_proxy.lock();
             if (!proxy || !proxy->ifa())
             {
                 continue;
@@ -725,7 +725,7 @@ namespace ndppd
                 bool handled = false;
                 for (auto &weak_proxy : ifa->serves())
                 {
-                    std::shared_ptr<proxy> proxy = weak_proxy.lock();
+                    std::shared_ptr<Proxy> proxy = weak_proxy.lock();
                     if (!proxy) continue;
 
                     // Process the solicitation request by relating it to other
@@ -759,7 +759,7 @@ namespace ndppd
                 bool handled = false;
                 for (auto &weak_proxy : ifa->parents())
                 {
-                    std::shared_ptr<proxy> proxy = weak_proxy.lock();
+                    std::shared_ptr<Proxy> proxy = weak_proxy.lock();
                     if (!proxy || !proxy->ifa())
                     {
                         continue;
@@ -897,22 +897,22 @@ namespace ndppd
         return _name;
     }
 
-    void iface::add_serves(const std::shared_ptr<proxy> &pr)
+    void iface::add_serves(const std::shared_ptr<Proxy> &pr)
     {
         _serves.push_back(pr);
     }
 
-    void iface::add_parent(const std::shared_ptr<proxy> &pr)
+    void iface::add_parent(const std::shared_ptr<Proxy> &pr)
     {
         _parents.push_back(pr);
     }
 
-    const Range<std::list<std::weak_ptr<proxy>>::const_iterator> iface::parents() const
+    const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> iface::parents() const
     {
         return { _parents.cbegin(), _parents.cend() };
     }
 
-    const Range<std::list<std::weak_ptr<proxy>>::const_iterator> iface::serves() const
+    const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> iface::serves() const
     {
         return { _serves.cbegin(), _serves.cend() };
     }

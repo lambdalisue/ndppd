@@ -30,15 +30,15 @@ namespace ndppd
 {
     class iface;
 
-    class proxy;
+    class Proxy;
 
-    class rule
+    class Rule
     {
     public:
-        static std::shared_ptr<rule>
-        create(const std::shared_ptr<proxy> &pr, const Cidr &cidr, const std::shared_ptr<iface> &ifa);
+        static std::shared_ptr<Rule>
+        create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, const std::shared_ptr<iface> &ifa);
 
-        static std::shared_ptr<rule> create(const std::shared_ptr<proxy> &pr, const Cidr &cidr, bool stc = true);
+        static std::shared_ptr<Rule> create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, bool stc = true);
 
         const Cidr &cidr() const;
 
@@ -59,9 +59,9 @@ namespace ndppd
         void autovia(bool val);
 
     private:
-        std::weak_ptr<rule> _ptr;
+        std::weak_ptr<Rule> _ptr;
 
-        std::weak_ptr<proxy> _pr;
+        std::weak_ptr<Proxy> _pr;
 
         std::shared_ptr<iface> _daughter;
 
@@ -77,6 +77,6 @@ namespace ndppd
 
         bool _autovia;
 
-        rule();
+        Rule();
     };
 }

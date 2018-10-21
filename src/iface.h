@@ -32,9 +32,9 @@
 namespace ndppd
 {
 
-    class session;
+    class Session;
 
-    class proxy;
+    class Proxy;
 
     class iface
     {
@@ -73,15 +73,15 @@ namespace ndppd
         // Returns the name of the interface.
         const std::string &name() const;
 
-        void add_serves(const std::shared_ptr<proxy> &proxy);
+        void add_serves(const std::shared_ptr<Proxy> &proxy);
 
-        void add_parent(const std::shared_ptr<proxy> &parent);
+        void add_parent(const std::shared_ptr<Proxy> &parent);
 
         static std::map<std::string, std::weak_ptr<iface> > _map;
 
-        const Range<std::list<std::weak_ptr<proxy>>::const_iterator> parents() const;
+        const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> parents() const;
 
-        const Range<std::list<std::weak_ptr<proxy>>::const_iterator> serves() const;
+        const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> serves() const;
 
 
     private:
@@ -116,9 +116,9 @@ namespace ndppd
         // Name of this interface.
         std::string _name;
 
-        std::list<std::weak_ptr<proxy> > _serves;
+        std::list<std::weak_ptr<Proxy> > _serves;
 
-        std::list<std::weak_ptr<proxy> > _parents;
+        std::list<std::weak_ptr<Proxy> > _parents;
 
         // The link-layer address of this interface.
         struct ether_addr hwaddr;

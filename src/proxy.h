@@ -33,18 +33,18 @@ namespace ndppd
 {
     class iface;
 
-    class rule;
+    class Rule;
 
-    class proxy
+    class Proxy
     {
     public:
-        static std::shared_ptr<proxy> create(const std::shared_ptr<iface> &ifa, bool promiscuous);
+        static std::shared_ptr<Proxy> create(const std::shared_ptr<iface> &ifa, bool promiscuous);
 
-        static std::shared_ptr<proxy> find_aunt(const std::string &ifname, const Address &taddr);
+        static std::shared_ptr<Proxy> find_aunt(const std::string &ifname, const Address &taddr);
 
-        static std::shared_ptr<proxy> open(const std::string &ifn, bool promiscuous);
+        static std::shared_ptr<Proxy> open(const std::string &ifn, bool promiscuous);
 
-        std::shared_ptr<session> find_or_create_session(const Address &taddr);
+        std::shared_ptr<Session> find_or_create_session(const Address &taddr);
 
         void handle_advert(const Address &saddr, const Address &taddr, const std::string &ifname, bool use_via);
 
@@ -53,11 +53,11 @@ namespace ndppd
 
         void handle_solicit(const Address &saddr, const Address &taddr, const std::string &ifname);
 
-        void remove_session(const std::shared_ptr<session> &se);
+        void remove_session(const std::shared_ptr<Session> &session);
 
-        std::shared_ptr<rule> add_rule(const Cidr &cidr, const std::shared_ptr<iface> &ifa, bool autovia);
+        std::shared_ptr<Rule> add_rule(const Cidr &cidr, const std::shared_ptr<iface> &ifa, bool autovia);
 
-        std::shared_ptr<rule> add_rule(const Cidr &cidr, bool aut = false);
+        std::shared_ptr<Rule> add_rule(const Cidr &cidr, bool aut = false);
 
         const std::shared_ptr<iface> &ifa() const;
 
@@ -91,18 +91,18 @@ namespace ndppd
 
         void deadtime(int val);
 
-        const Range<std::list<std::shared_ptr<rule> >::const_iterator> rules() const;
+        const Range<std::list<std::shared_ptr<Rule> >::const_iterator> rules() const;
 
     private:
-        static std::list<std::shared_ptr<proxy> > _list;
+        static std::list<std::shared_ptr<Proxy> > _list;
 
-        std::weak_ptr<proxy> _ptr;
+        std::weak_ptr<Proxy> _ptr;
 
         std::shared_ptr<iface> _ifa;
 
-        std::list<std::shared_ptr<rule> > _rules;
+        std::list<std::shared_ptr<Rule> > _rules;
 
-        std::list<std::shared_ptr<session> > _sessions;
+        std::list<std::shared_ptr<Session> > _sessions;
 
         bool _promiscuous;
 
@@ -116,7 +116,7 @@ namespace ndppd
 
         int _ttl, _deadtime, _timeout;
 
-        proxy();
+        Proxy();
     };
 
 }

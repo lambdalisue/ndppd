@@ -160,7 +160,7 @@ static bool configure(std::shared_ptr<conf> &cf)
 {
     std::shared_ptr<conf> x_cf;
 
-    std::list<std::shared_ptr<rule> > myrules;
+    std::list<std::shared_ptr<Rule> > myrules;
 
     std::vector<std::shared_ptr<conf> >::const_iterator p_it;
 
@@ -181,7 +181,7 @@ static bool configure(std::shared_ptr<conf> &cf)
         else
             promiscuous = *x_cf;
 
-        std::shared_ptr<proxy> pr = proxy::open(*pr_cf, promiscuous);
+        std::shared_ptr<Proxy> pr = Proxy::open(*pr_cf, promiscuous);
         if (!pr)
         {
             return false;
@@ -270,7 +270,7 @@ static bool configure(std::shared_ptr<conf> &cf)
 
         for (auto &weak_proxy : ifa->serves())
         {
-            std::shared_ptr<proxy> proxy = weak_proxy.lock();
+            std::shared_ptr<Proxy> proxy = weak_proxy.lock();
             if (!proxy) continue;
 
             Logger::debug() << "  " << "proxy " << Logger::format("%x", proxy.get()) << " {";
@@ -294,7 +294,7 @@ static bool configure(std::shared_ptr<conf> &cf)
         Logger::debug() << "  " << "parents {";
         for (auto &weak_proxy : ifa->parents())
         {
-            std::shared_ptr<proxy> proxy = weak_proxy.lock();
+            std::shared_ptr<Proxy> proxy = weak_proxy.lock();
             Logger::debug() << "    " << "parent " << Logger::format("%x", proxy.get()) << ";";
         }
 
@@ -419,7 +419,7 @@ int main(int argc, char *argv[], char *env[])
         t1.tv_sec = t2.tv_sec;
         t1.tv_usec = t2.tv_usec;
 
-        session::update_all(elapsed_time);
+        Session::update_all(elapsed_time);
     }
 
     Logger::notice() << "Bye";

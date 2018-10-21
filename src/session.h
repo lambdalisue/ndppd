@@ -24,16 +24,16 @@
 
 namespace ndppd
 {
-    class proxy;
+    class Proxy;
 
     class iface;
 
-    class session
+    class Session
     {
     private:
-        std::weak_ptr<session> _ptr;
+        std::weak_ptr<Session> _ptr;
 
-        std::weak_ptr<proxy> _pr;
+        std::weak_ptr<Proxy> _pr;
 
         Address _saddr, _daddr, _taddr;
 
@@ -63,7 +63,7 @@ namespace ndppd
 
         int _status;
 
-        static std::list<std::weak_ptr<session> > _sessions;
+        static std::list<std::weak_ptr<Session> > _sessions;
 
     public:
         enum
@@ -77,10 +77,10 @@ namespace ndppd
         static void update_all(int elapsed_time);
 
         // Destructor.
-        ~session();
+        ~Session();
 
-        static std::shared_ptr<session>
-        create(const std::shared_ptr<proxy> &pr, const Address &taddr, bool autowire, bool keepalive, int retries);
+        static std::shared_ptr<Session>
+        create(const std::shared_ptr<Proxy> &pr, const Address &taddr, bool autowire, bool keepalive, int retries);
 
         void add_iface(const std::shared_ptr<iface> &ifa);
 
