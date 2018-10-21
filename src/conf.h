@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef NDPPD_CONF_H
+#define NDPPD_CONF_H
 
 #include <string>
 #include <map>
@@ -25,60 +26,61 @@
 #include "ndppd.h"
 #include "logger.h"
 
-namespace ndppd
-{
-    class conf
-    {
-    public:
+NDPPD_NS_BEGIN
 
-    private:
-        std::string _value;
+class conf {
+public:
 
-        bool _is_block;
+private:
+    std::string _value;
 
-        std::multimap<std::string, std::shared_ptr<conf> > _map;
+    bool _is_block;
 
-        void dump(Logger &l, int level) const;
+    std::multimap<std::string, std::shared_ptr<conf> > _map;
 
-        static const char *skip(const char *str, bool all = true);
+    void dump(Logger& logger, int level) const;
 
-        bool parse_block(const char **str);
+    static const char* skip(const char* str, bool all = true);
 
-        bool parse(const char **str);
+    bool parse_block(const char** str);
 
-    public:
-        conf();
+    bool parse(const char** str);
 
-        static std::shared_ptr<conf> load(const std::string &path);
+public:
+    conf();
 
-        bool is_block() const;
+    static std::shared_ptr<conf> load(const std::string& path);
 
-        std::shared_ptr<conf> operator[](const std::string &name) const;
+    bool is_block() const;
 
-        std::shared_ptr<conf> operator()(const std::string &name, int index = 0) const;
+    std::shared_ptr<conf> operator[](const std::string& name) const;
 
-        operator const std::string &() const;
+    std::shared_ptr<conf> operator()(const std::string& name, int index = 0) const;
 
-        operator int() const;
+    operator const std::string&() const;
 
-        operator bool() const;
+    operator int() const;
 
-        bool as_bool() const;
+    operator bool() const;
 
-        const std::string &as_str() const;
+    bool as_bool() const;
 
-        int as_int() const;
+    const std::string& as_str() const;
 
-        bool empty() const;
+    int as_int() const;
 
-        std::vector<std::shared_ptr<conf> > find_all(const std::string &name) const;
+    bool empty() const;
 
-        std::shared_ptr<conf> find(const std::string &name, int index = 0) const;
+    std::vector<std::shared_ptr<conf> > find_all(const std::string& name) const;
 
-        void dump(LogLevel logLevel = LogLevel::Info) const;
+    std::shared_ptr<conf> find(const std::string& name, int index = 0) const;
 
-        operator const std::string &();
+    void dump(LogLevel logLevel = LogLevel::Info) const;
 
-    };
+    operator const std::string&();
 
-}
+};
+
+NDPPD_NS_END
+
+#endif

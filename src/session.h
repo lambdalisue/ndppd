@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef NDPPD_SESSION_H
+#define NDPPD_SESSION_H
 
 #include <vector>
 #include <string>
@@ -22,103 +23,103 @@
 
 #include "ndppd.h"
 
-namespace ndppd
-{
-    class Proxy;
+NDPPD_NS_BEGIN
 
-    class Interface;
+class Proxy;
 
-    class Session
-    {
-    private:
-        std::weak_ptr<Session> _ptr;
+class Interface;
 
-        std::weak_ptr<Proxy> _pr;
+class Session {
+private:
+    std::weak_ptr<Session> _ptr;
 
-        Address _saddr, _daddr, _taddr;
+    std::weak_ptr<Proxy> _pr;
 
-        bool _autowire;
+    Address _saddr, _daddr, _taddr;
 
-        bool _keepalive;
+    bool _autowire;
 
-        bool _wired;
+    bool _keepalive;
 
-        Address _wired_via;
+    bool _wired;
 
-        bool _touched;
+    Address _wired_via;
 
-        // An array of interfaces this session is monitoring for
-        // ND_NEIGHBOR_ADVERT on.
-        std::list<std::shared_ptr<Interface> > _ifaces;
+    bool _touched;
 
-        std::set<Address> _pending;
+    // An array of interfaces this session is monitoring for
+    // ND_NEIGHBOR_ADVERT on.
+    std::list<std::shared_ptr<Interface> > _ifaces;
 
-        // The remaining time in miliseconds the object will stay in the
-        // interface's session array or cache.
-        int _ttl;
+    std::set<Address> _pending;
 
-        int _fails;
+    // The remaining time in miliseconds the object will stay in the
+    // interface's session array or cache.
+    int _ttl;
 
-        int _retries;
+    int _fails;
 
-        int _status;
+    int _retries;
 
-        static std::list<std::weak_ptr<Session> > _sessions;
+    int _status;
 
-    public:
-        enum
-        {
-            WAITING,  // Waiting for an advert response.
-            RENEWING, // Renewing;
-            VALID,    // Valid;
-            INVALID   // Invalid;
-        };
+    static std::list<std::weak_ptr<Session> > _sessions;
 
-        static void update_all(int elapsed_time);
-
-        // Destructor.
-        ~Session();
-
-        static std::shared_ptr<Session>
-        create(const std::shared_ptr<Proxy> &pr, const Address &taddr, bool autowire, bool keepalive, int retries);
-
-        void add_iface(const std::shared_ptr<Interface> &ifa);
-
-        void add_pending(const Address &addr);
-
-        const Address &taddr() const;
-
-        const Address &daddr() const;
-
-        const Address &saddr() const;
-
-        bool autowire() const;
-
-        int retries() const;
-
-        int fails() const;
-
-        bool keepalive() const;
-
-        bool wired() const;
-
-        bool touched() const;
-
-        int status() const;
-
-        void status(int val);
-
-        void handle_advert();
-
-        void handle_advert(const Address &saddr, const std::string &ifname, bool use_via);
-
-        void touch();
-
-        void send_advert(const Address &daddr);
-
-        void send_solicit();
-
-        void refesh();
+public:
+    enum {
+        WAITING,  // Waiting for an advert response.
+        RENEWING, // Renewing;
+        VALID,    // Valid;
+        INVALID   // Invalid;
     };
 
-}
+    static void update_all(int elapsed_time);
+
+    // Destructor.
+    ~Session();
+
+    static std::shared_ptr<Session>
+    create(const std::shared_ptr<Proxy>& pr, const Address& taddr, bool autowire, bool keepalive, int retries);
+
+    void add_iface(const std::shared_ptr<Interface>& ifa);
+
+    void add_pending(const Address& addr);
+
+    const Address& taddr() const;
+
+    const Address& daddr() const;
+
+    const Address& saddr() const;
+
+    bool autowire() const;
+
+    int retries() const;
+
+    int fails() const;
+
+    bool keepalive() const;
+
+    bool wired() const;
+
+    bool touched() const;
+
+    int status() const;
+
+    void status(int val);
+
+    void handle_advert();
+
+    void handle_advert(const Address& saddr, const std::string& ifname, bool use_via);
+
+    void touch();
+
+    void send_advert(const Address& daddr);
+
+    void send_solicit();
+
+    void refesh();
+};
+
+NDPPD_NS_END
+
+#endif

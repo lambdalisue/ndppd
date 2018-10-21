@@ -14,33 +14,37 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef NDPPD_RANGE_H
+#define NDPPD_RANGE_H
 
-namespace ndppd
-{
+#include "ndppd.h"
 
-    template<typename _Tp>
-    class Range
+NDPPD_NS_BEGIN
+
+template<typename _Tp>
+class Range {
+private:
+    _Tp _begin;
+    _Tp _end;
+
+public:
+    Range(_Tp begin, _Tp end)
     {
-    private:
-        _Tp _begin;
-        _Tp _end;
+        _begin = begin;
+        _end = end;
+    }
 
-    public:
-        Range(_Tp begin, _Tp end)
-        {
-            _begin = begin;
-            _end = end;
-        }
+    _Tp begin() const
+    {
+        return _begin;
+    }
 
-        _Tp begin() const
-        {
-            return _begin;
-        }
+    _Tp end() const
+    {
+        return _end;
+    }
+};
 
-        _Tp end() const
-        {
-            return _end;
-        }
-    };
-}
+NDPPD_NS_END
+
+#endif

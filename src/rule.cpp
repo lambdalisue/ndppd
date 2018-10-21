@@ -24,7 +24,7 @@
 #include "proxy.h"
 #include "interface.h"
 
-using namespace ndppd;
+NDPPD_NS_BEGIN
 
 bool Rule::_any_aut = false;
 
@@ -37,7 +37,7 @@ Rule::Rule()
 }
 
 std::shared_ptr<Rule>
-Rule::create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, const std::shared_ptr<Interface> &ifa)
+Rule::create(const std::shared_ptr<Proxy>& pr, const Cidr& cidr, const std::shared_ptr<Interface>& ifa)
 {
     std::shared_ptr<Rule> rule(new Rule());
     rule->_ptr = rule;
@@ -62,7 +62,7 @@ Rule::create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, const std::shar
     return rule;
 }
 
-std::shared_ptr<Rule> Rule::create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, bool aut)
+std::shared_ptr<Rule> Rule::create(const std::shared_ptr<Proxy>& pr, const Cidr& cidr, bool aut)
 {
     std::shared_ptr<Rule> rule(new Rule());
     rule->_ptr = rule;
@@ -81,7 +81,7 @@ std::shared_ptr<Rule> Rule::create(const std::shared_ptr<Proxy> &pr, const Cidr 
     return rule;
 }
 
-const Cidr &Rule::cidr() const
+const Cidr& Rule::cidr() const
 {
     return _cidr;
 }
@@ -121,8 +121,9 @@ bool Rule::any_static()
     return _any_static;
 }
 
-bool Rule::check(const Address &addr) const
+bool Rule::check(const Address& addr) const
 {
     return _cidr % addr;
 }
 
+NDPPD_NS_END

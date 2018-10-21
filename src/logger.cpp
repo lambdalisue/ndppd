@@ -23,40 +23,34 @@
 #include <iostream>
 #include <sstream>
 
+#ifndef DISABLE_SYSLOG
+#include <syslog.h>
+#endif
+
 #include "ndppd.h"
 #include "logger.h"
 
-#ifndef DISABLE_SYSLOG
+NDPPD_NS_BEGIN
 
-#include <syslog.h>
+static const char* logLevel_names[] = {
+        "Error",
+        "Warning",
+        "Notice",
+        "Info",
+        "Debug",
+        nullptr
+};
 
-#endif
+static bool use_syslog;
+static LogLevel verbosity = LogLevel::Info;
 
-using namespace ndppd;
-
-namespace
-{
-    const char *logLevel_names[] = {
-            "Error",
-            "Warning",
-            "Notice",
-            "Info",
-            "Debug",
-            nullptr
-    };
-
-    bool use_syslog;
-
-    LogLevel verbosity = LogLevel::Info;
-}
-
-Logger::Logger(LogLevel logLevel) :
-        _logLevel(logLevel)
+Logger::Logger(LogLevel logLevel)
+        : _logLevel(logLevel)
 {
 }
 
-Logger::Logger(const Logger &logger) :
-        _logLevel(logger._logLevel), _ss(logger._ss.str())
+Logger::Logger(const Logger& logger)
+        : _logLevel(logger._logLevel), _ss(logger._ss.str())
 {
 }
 
@@ -65,7 +59,7 @@ Logger::~Logger()
     flush();
 }
 
-std::string Logger::format(const char *fmt, ...)
+std::string Logger::format(const char* fmt, ...)
 {
     char buf[2048];
     va_list va;
@@ -113,25 +107,25 @@ Logger Logger::notice()
     return Logger(LogLevel::Notice);
 }
 
-Logger &Logger::operator<<(const std::string &str)
+Logger& Logger::operator<<(const std::string& str)
 {
     _ss << str;
     return *this;
 }
 
-Logger &Logger::operator<<(int n)
+Logger& Logger::operator<<(int n)
 {
     _ss << n;
     return *this;
 }
 
-Logger &Logger::operator<<(Logger &(*pf)(Logger &))
+Logger& Logger::operator<<(Logger& (* pf)(Logger&))
 {
     pf(*this);
     return *this;
 }
 
-Logger &Logger::endl(Logger &__l)
+Logger& Logger::endl(Logger& __l)
 {
     __l.flush();
     return __l;
@@ -142,32 +136,30 @@ void Logger::flush()
     if (!_ss.rdbuf()->in_avail())
         return;
 
-    if (_logLevel > ::verbosity)
+    if (_logLevel > ndppd::verbosity)
         return;
 
 #ifndef DISABLE_SYSLOG
-    if (use_syslog)
-    {
+    if (use_syslog) {
         int pri;
-        switch (_logLevel)
-        {
-            case LogLevel::Error:
-                pri = LOG_ERR;
-                break;
-            case LogLevel::Warning:
-                pri = LOG_WARNING;
-                break;
-            case LogLevel::Notice:
-                pri = LOG_NOTICE;
-                break;
-            case LogLevel::Info:
-                pri = LOG_INFO;
-                break;
-            case LogLevel::Debug:
-                pri = LOG_DEBUG;
-                break;
-            default:
-                return;
+        switch (_logLevel) {
+        case LogLevel::Error:
+            pri = LOG_ERR;
+            break;
+        case LogLevel::Warning:
+            pri = LOG_WARNING;
+            break;
+        case LogLevel::Notice:
+            pri = LOG_NOTICE;
+            break;
+        case LogLevel::Info:
+            pri = LOG_INFO;
+            break;
+        case LogLevel::Debug:
+            pri = LOG_DEBUG;
+            break;
+        default:
+            return;
         }
 
         ::syslog(pri, "(%s) %s", logLevel_names[(int) _logLevel], _ss.str().c_str());
@@ -186,13 +178,11 @@ bool Logger::syslog(bool enable)
     if (enable == use_syslog)
         return use_syslog;
 
-    if ((use_syslog = enable))
-    {
+    if ((use_syslog = enable)) {
         setlogmask(LOG_UPTO(LOG_DEBUG));
         openlog("ndppd", LOG_CONS | LOG_NDELAY | LOG_PERROR | LOG_PID, LOG_USER);
     }
-    else
-    {
+    else {
         closelog();
     }
 
@@ -208,37 +198,35 @@ bool Logger::syslog()
 
 LogLevel Logger::verbosity()
 {
-    return ::verbosity;
+    return ndppd::verbosity;
 }
 
 void Logger::verbosity(LogLevel verbosity)
 {
-    ::verbosity = verbosity;
+    ndppd::verbosity = verbosity;
 }
 
-bool Logger::verbosity(const std::string &name)
+bool Logger::verbosity(const std::string& name)
 {
-    const char *c_name = name.c_str();
+    const char* c_name = name.c_str();
 
-    if (!*c_name)
-    {
+    if (!*c_name) {
         return false;
     }
 
-    if (isdigit(*c_name))
-    {
-        ::verbosity = (LogLevel) atoi(c_name);
+    if (isdigit(*c_name)) {
+        ndppd::verbosity = (LogLevel) atoi(c_name);
         return true;
     }
 
-    for (int i = 0; logLevel_names[i]; i++)
-    {
-        if (!strcmp(c_name, logLevel_names[i]))
-        {
-            ::verbosity = (LogLevel) i;
+    for (int i = 0; logLevel_names[i]; i++) {
+        if (!strcmp(c_name, logLevel_names[i])) {
+            ndppd::verbosity = (LogLevel) i;
             return true;
         }
     }
 
     return false;
 }
+
+NDPPD_NS_END

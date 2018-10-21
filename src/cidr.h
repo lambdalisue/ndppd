@@ -14,38 +14,43 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef NDPPD_CIDR_H
+#define NDPPD_CIDR_H
 
 #include <netinet/in.h>
+
+#include "ndppd.h"
 #include "address.h"
 
-namespace ndppd
-{
-    class Cidr
-    {
-    public:
-        Cidr();
+NDPPD_NS_BEGIN
 
-        Cidr(const Cidr &cidr);
+class Cidr {
+public:
+    Cidr();
 
-        explicit Cidr(std::string string);
+    Cidr(const Cidr& cidr);
 
-        explicit Cidr(const in6_addr &addr, int prefix = 128);
+    explicit Cidr(std::string string);
 
-        const struct in6_addr &addr() const;
+    explicit Cidr(const in6_addr& addr, int prefix = 128);
 
-        explicit operator bool() const;
+    const struct in6_addr& addr() const;
 
-        const std::string to_string() const;
+    explicit operator bool() const;
 
-        int prefix() const;
+    const std::string to_string() const;
 
-        bool operator%(const Address &address) const;
+    int prefix() const;
 
-    private:
-        in6_addr _addr;
-        int _prefix;
-    };
+    bool operator%(const Address& address) const;
 
-    Logger &operator<<(Logger &logger, const Cidr &cidr);
-}
+private:
+    in6_addr _addr;
+    int _prefix;
+};
+
+Logger& operator<<(Logger& logger, const Cidr& cidr);
+
+NDPPD_NS_END
+
+#endif

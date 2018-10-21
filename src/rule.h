@@ -14,69 +14,72 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef NDPPD_RULE_H
+#define NDPPD_RULE_H
 
 #include <string>
 #include <vector>
 #include <map>
 #include <list>
-
-#include <sys/poll.h>
 #include <memory>
+#include <sys/poll.h>
 
+#include "ndppd.h"
 #include "cidr.h"
 
-namespace ndppd
-{
-    class Interface;
+NDPPD_NS_BEGIN
 
-    class Proxy;
+class Interface;
 
-    class Rule
-    {
-    public:
-        static std::shared_ptr<Rule>
-        create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, const std::shared_ptr<Interface> &ifa);
+class Proxy;
 
-        static std::shared_ptr<Rule> create(const std::shared_ptr<Proxy> &pr, const Cidr &cidr, bool stc = true);
+class Rule {
+public:
+    static std::shared_ptr<Rule>
+    create(const std::shared_ptr<Proxy>& pr, const Cidr& cidr, const std::shared_ptr<Interface>& ifa);
 
-        const Cidr &cidr() const;
+    static std::shared_ptr<Rule> create(const std::shared_ptr<Proxy>& pr, const Cidr& cidr, bool stc = true);
 
-        std::shared_ptr<Interface> daughter() const;
+    const Cidr& cidr() const;
 
-        bool is_auto() const;
+    std::shared_ptr<Interface> daughter() const;
 
-        bool check(const Address &addr) const;
+    bool is_auto() const;
 
-        static bool any_auto();
+    bool check(const Address& addr) const;
 
-        static bool any_static();
+    static bool any_auto();
 
-        static bool any_iface();
+    static bool any_static();
 
-        bool autovia() const;
+    static bool any_iface();
 
-        void autovia(bool val);
+    bool autovia() const;
 
-    private:
-        std::weak_ptr<Rule> _ptr;
+    void autovia(bool val);
 
-        std::weak_ptr<Proxy> _pr;
+private:
+    std::weak_ptr<Rule> _ptr;
 
-        std::shared_ptr<Interface> _daughter;
+    std::weak_ptr<Proxy> _pr;
 
-        Cidr _cidr;
+    std::shared_ptr<Interface> _daughter;
 
-        bool _aut;
+    Cidr _cidr;
 
-        static bool _any_aut;
+    bool _aut;
 
-        static bool _any_static;
+    static bool _any_aut;
 
-        static bool _any_iface;
+    static bool _any_static;
 
-        bool _autovia;
+    static bool _any_iface;
 
-        Rule();
-    };
-}
+    bool _autovia;
+
+    Rule();
+};
+
+NDPPD_NS_END
+
+#endif

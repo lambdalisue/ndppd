@@ -14,71 +14,74 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef NDPPD_LOGGER_H
+#define NDPPD_LOGGER_H
 
 #include <sstream>
 
-namespace ndppd
-{
-    enum class LogLevel
-    {
-        Error,
-        Warning,
-        Notice,
-        Info,
-        Debug
-    };
+#include "ndppd.h"
 
-    class Logger
-    {
-    public:
-        static std::string format(const char *fmt, ...);
+NDPPD_NS_BEGIN
+
+enum class LogLevel {
+    Error,
+    Warning,
+    Notice,
+    Info,
+    Debug
+};
+
+class Logger {
+public:
+    static std::string format(const char* fmt, ...);
 
 #ifndef DISABLE_SYSLOG
 
-        static bool syslog(bool enable);
+    static bool syslog(bool enable);
 
-        static bool syslog();
+    static bool syslog();
 
 #endif
 
-        static bool verbosity(const std::string &name);
+    static bool verbosity(const std::string& name);
 
-        static LogLevel verbosity();
+    static LogLevel verbosity();
 
-        static void verbosity(LogLevel verbosity);
+    static void verbosity(LogLevel verbosity);
 
-        static Logger &endl(Logger &__l);
+    static Logger& endl(Logger& __l);
 
-        static Logger error();
+    static Logger error();
 
-        static Logger info();
+    static Logger info();
 
-        static Logger warning();
+    static Logger warning();
 
-        static Logger debug();
+    static Logger debug();
 
-        static Logger notice();
+    static Logger notice();
 
-        static std::string err();
+    static std::string err();
 
-        explicit Logger(LogLevel logLevel);
+    explicit Logger(LogLevel logLevel);
 
-        Logger(const Logger &logger);
+    Logger(const Logger& logger);
 
-        ~Logger();
+    ~Logger();
 
-        Logger &operator<<(const std::string &str);
+    Logger& operator<<(const std::string& str);
 
-        Logger &operator<<(Logger &(*pf)(Logger &));
+    Logger& operator<<(Logger& (* pf)(Logger&));
 
-        Logger &operator<<(int n);
+    Logger& operator<<(int n);
 
-        void flush();
+    void flush();
 
-    private:
-        LogLevel _logLevel;
-        std::stringstream _ss;
-    };
-}
+private:
+    LogLevel _logLevel;
+    std::stringstream _ss;
+};
 
+NDPPD_NS_END
+
+#endif

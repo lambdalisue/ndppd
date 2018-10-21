@@ -14,32 +14,33 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef NDPPD_NETLINK_H
+#define NDPPD_NETLINK_H
 
 #include <memory>
 #include <set>
-
+#include "ndppd.h"
 #include "socket.h"
 #include "address.h"
 #include "range.h"
 
-namespace ndppd {
+NDPPD_NS_BEGIN
 
+class Netlink {
+public:
+    static void initialize();
 
-    class Netlink {
-    public:
-        static void initialize();
+    static void finalize();
 
-        static void finalize();
+    static const Range<std::set<Address>::const_iterator> local_addresses();
 
-        static const Range<std::set<Address>::const_iterator> local_addresses();
+    static void load_local_ips();
 
-        static void load_local_ips();
+    static bool is_local(const Address& address);
 
-        static bool is_local(const Address &address);
+    static void test();
+};
 
-        static void test();
-    };
-}
+NDPPD_NS_END
 
-
+#endif

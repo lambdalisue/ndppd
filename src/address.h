@@ -14,43 +14,48 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef NDPPD_ADDRESS_H
+#define NDPPD_ADDRESS_H
 
 #include <netinet/in.h>
+
+#include "ndppd.h"
 #include "logger.h"
 
-namespace ndppd
-{
-    class Address
-    {
-    public:
-        Address();
+NDPPD_NS_BEGIN
 
-        explicit Address(const in6_addr &addr);
+class Address {
+public:
+    Address();
 
-        explicit Address(const std::string &address);
+    explicit Address(const in6_addr& addr);
 
-        const in6_addr &c_addr() const;
+    explicit Address(const std::string& address);
 
-        in6_addr &addr();
+    const in6_addr& c_addr() const;
 
-        bool is_unicast() const;
+    in6_addr& addr();
 
-        bool is_multicast() const;
+    bool is_unicast() const;
 
-        std::string to_string() const;
+    bool is_multicast() const;
 
-        bool operator==(const Address &address) const;
+    std::string to_string() const;
 
-        bool operator!=(const Address &address) const;
+    bool operator==(const Address& address) const;
 
-        bool operator<(const Address &address) const;
+    bool operator!=(const Address& address) const;
 
-        explicit operator bool() const;
+    bool operator<(const Address& address) const;
 
-    private:
-        in6_addr _addr;
-    };
+    explicit operator bool() const;
 
-    Logger &operator<<(Logger &logger, const Address &address);
-}
+private:
+    in6_addr _addr;
+};
+
+Logger& operator<<(Logger& logger, const Address& address);
+
+NDPPD_NS_END
+
+#endif

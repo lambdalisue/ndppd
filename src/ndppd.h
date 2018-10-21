@@ -14,6 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#pragma once
+#ifndef NDPPD_NDPPD_H
+#define NDPPD_NDPPD_H
 
 #define NDPPD_VERSION   "0.2.4"
+
+#define NDPPD_NS_BEGIN  namespace ndppd {
+#define NDPPD_NS_END    }
+
+#endif
