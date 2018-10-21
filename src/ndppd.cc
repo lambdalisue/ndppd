@@ -36,8 +36,7 @@
 
 using namespace ndppd;
 
-static int daemonize()
-{
+static int daemonize() {
     pid_t pid = fork();
     if (pid < 0) {
         Logger::error() << "Failed to fork during daemonize: " << Logger::err();
@@ -67,8 +66,7 @@ static int daemonize()
     return 0;
 }
 
-static std::shared_ptr<conf> load_config(const std::string& path)
-{
+static std::shared_ptr<conf> load_config(const std::string &path) {
     std::shared_ptr<conf> cf, x_cf;
 
     if (!(cf = conf::load(path)))
@@ -91,7 +89,7 @@ static std::shared_ptr<conf> load_config(const std::string& path)
         std::vector<std::shared_ptr<conf> > rules(pr_cf->find_all("rule"));
 
         for (r_it = rules.begin(); r_it != rules.end(); r_it++) {
-            std::shared_ptr<conf> ru_cf =* r_it;
+            std::shared_ptr<conf> ru_cf = *r_it;
 
             if (ru_cf->empty()) {
                 Logger::error() << "'rule' is missing an IPv6 address/net";
@@ -103,30 +101,30 @@ static std::shared_ptr<conf> load_config(const std::string& path)
             if (x_cf = ru_cf->find("iface")) {
                 if (ru_cf->find("static") || ru_cf->find("auto")) {
                     Logger::error()
-                        << "Only one of 'iface', 'auto' and 'static' may "
-                        << "be specified.";
+                            << "Only one of 'iface', 'auto' and 'static' may "
+                            << "be specified.";
                     return {};
                 }
-                if ((const std::string&)*x_cf == "") {
+                if ((const std::string &) *x_cf == "") {
                     Logger::error() << "'iface' expected an interface name";
                     return {};
                 }
             } else if (ru_cf->find("static")) {
                 if (ru_cf->find("auto")) {
                     Logger::error()
-                        << "Only one of 'iface', 'auto' and 'static' may "
-                        << "be specified.";
+                            << "Only one of 'iface', 'auto' and 'static' may "
+                            << "be specified.";
                     return {};
                 }
                 if (addr.prefix() <= 120) {
                     Logger::warning()
-                        << "Low prefix length (" << addr.prefix()
-                        << " <= 120) when using 'static' method";
+                            << "Low prefix length (" << addr.prefix()
+                            << " <= 120) when using 'static' method";
                 }
             } else if (!ru_cf->find("auto")) {
                 Logger::error()
-                    << "You must specify either 'iface', 'auto' or "
-                    << "'static'";
+                        << "You must specify either 'iface', 'auto' or "
+                        << "'static'";
                 return {};
 
             }
@@ -136,8 +134,7 @@ static std::shared_ptr<conf> load_config(const std::string& path)
     return cf;
 }
 
-static bool configure(std::shared_ptr<conf>& cf)
-{
+static bool configure(std::shared_ptr<conf> &cf) {
     std::shared_ptr<conf> x_cf;
 
     if (!(x_cf = cf->find("route-ttl")))
@@ -157,7 +154,7 @@ static bool configure(std::shared_ptr<conf>& cf)
         if (pr_cf->empty()) {
             return false;
         }
-        
+
         bool promiscuous = false;
         if (!(x_cf = pr_cf->find("promiscuous")))
             promiscuous = false;
@@ -173,17 +170,17 @@ static bool configure(std::shared_ptr<conf>& cf)
             pr->router(true);
         else
             pr->router(*x_cf);
-        
+
         if (!(x_cf = pr_cf->find("autowire")))
             pr->autowire(false);
         else
             pr->autowire(*x_cf);
-        
+
         if (!(x_cf = pr_cf->find("keepalive")))
             pr->keepalive(true);
         else
             pr->keepalive(*x_cf);
-        
+
         if (!(x_cf = pr_cf->find("retries")))
             pr->retries(3);
         else
@@ -193,7 +190,7 @@ static bool configure(std::shared_ptr<conf>& cf)
             pr->ttl(30000);
         else
             pr->ttl(*x_cf);
-        
+
         if (!(x_cf = pr_cf->find("deadtime")))
             pr->deadtime(pr->ttl());
         else
@@ -209,25 +206,24 @@ static bool configure(std::shared_ptr<conf>& cf)
         std::vector<std::shared_ptr<conf> > rules(pr_cf->find_all("rule"));
 
         for (r_it = rules.begin(); r_it != rules.end(); r_it++) {
-            std::shared_ptr<conf> ru_cf =* r_it;
+            std::shared_ptr<conf> ru_cf = *r_it;
 
             address addr(*ru_cf);
-            
+
             bool autovia = false;
             if (!(x_cf = ru_cf->find("autovia")))
                 autovia = false;
             else
                 autovia = *x_cf;
 
-            if (x_cf = ru_cf->find("iface"))
-            {
+            if (x_cf = ru_cf->find("iface")) {
                 std::shared_ptr<iface> ifa = iface::open_ifd(*x_cf);
                 if (!ifa) {
                     return false;
                 }
-                
+
                 ifa->add_parent(pr);
-                
+
                 myrules.push_back(pr->add_rule(addr, ifa, autovia));
             } else if (ru_cf->find("auto")) {
                 myrules.push_back(pr->add_rule(addr, true));
@@ -236,60 +232,55 @@ static bool configure(std::shared_ptr<conf>& cf)
             }
         }
     }
-    
-    // Print out all the topology    
-    for (std::map<std::string, std::weak_ptr<iface> >::iterator i_it = iface::_map.begin(); i_it != iface::_map.end(); i_it++) {
-        std::shared_ptr<iface> ifa = i_it->second.lock();
-        
-        Logger::debug() << "iface " << ifa->name() << " {";
-        
-        for (std::list<std::weak_ptr<proxy> >::iterator pit = ifa->serves_begin(); pit != ifa->serves_end(); pit++) {
-            std::shared_ptr<proxy> pr = pit->lock();
-            if (!pr) continue;
 
-            Logger::debug() << "  " << "proxy " << Logger::format("%x", pr.get()) << " {";
-            
-             for (std::list<std::shared_ptr<rule> >::iterator rit = pr->rules_begin(); rit != pr->rules_end(); rit++) {
-                std::shared_ptr<rule> ru = *rit;
-                
-                Logger::debug() << "    " << "rule " << Logger::format("%x", ru.get()) << " {";
-                Logger::debug() << "      " << "taddr " << ru->addr()<< ";";
-                if (ru->is_auto())
+    // Print out all the topology    
+    for (auto i_it = iface::_map.begin(); i_it != iface::_map.end(); i_it++) {
+        std::shared_ptr<iface> ifa = i_it->second.lock();
+
+        Logger::debug() << "iface " << ifa->name() << " {";
+
+        for (auto &weak_proxy : ifa->serves()) {
+            std::shared_ptr<proxy> proxy = weak_proxy.lock();
+            if (!proxy) continue;
+
+            Logger::debug() << "  " << "proxy " << Logger::format("%x", proxy.get()) << " {";
+
+            for (auto &rule : proxy->rules()) {
+                Logger::debug() << "    " << "rule " << Logger::format("%x", rule.get()) << " {";
+                Logger::debug() << "      " << "taddr " << rule->addr() << ";";
+                if (rule->is_auto())
                     Logger::debug() << "      " << "auto;";
-                else if (!ru->daughter())
+                else if (!rule->daughter())
                     Logger::debug() << "      " << "static;";
                 else
-                    Logger::debug() << "      " << "iface " << ru->daughter()->name() << ";";
+                    Logger::debug() << "      " << "iface " << rule->daughter()->name() << ";";
                 Logger::debug() << "    }";
-             }
-            
+            }
+
             Logger::debug() << "  }";
         }
-        
+
         Logger::debug() << "  " << "parents {";
-        for (std::list<std::weak_ptr<proxy> >::iterator pit = ifa->parents_begin(); pit != ifa->parents_end(); pit++) {
-            std::shared_ptr<proxy> pr = pit->lock();
-            
-            Logger::debug() << "    " << "parent " << Logger::format("%x", pr.get()) << ";";
+        for (auto &weak_proxy : ifa->parents()) {
+            std::shared_ptr<proxy> proxy = weak_proxy.lock();
+            Logger::debug() << "    " << "parent " << Logger::format("%x", proxy.get()) << ";";
         }
+
         Logger::debug() << "  }";
-        
         Logger::debug() << "}";
     }
-    
+
     return true;
 }
 
 static bool running = true;
 
-static void exit_ndppd(int sig)
-{
+static void exit_ndppd(int sig) {
     Logger::error() << "Shutting down...";
     running = 0;
 }
 
-int main(int argc, char* argv[], char* env[])
-{
+int main(int argc, char *argv[], char *env[]) {
     signal(SIGINT, exit_ndppd);
     signal(SIGTERM, exit_ndppd);
 
@@ -302,46 +293,46 @@ int main(int argc, char* argv[], char* env[])
         int c, opt;
 
         static struct option long_options[] =
-        {
-            { "config",     1, 0, 'c' },
-            { "daemon",     0, 0, 'd' },
-            { "verbose",    1, 0, 'v' },
-            { 0, 0, 0, 0}
-        };
+                {
+                        {"config",  1, 0, 'c'},
+                        {"daemon",  0, 0, 'd'},
+                        {"verbose", 1, 0, 'v'},
+                        {0,         0, 0, 0}
+                };
 
-        c = getopt_long(argc, argv, "c:dp:v", long_options,& opt);
+        c = getopt_long(argc, argv, "c:dp:v", long_options, &opt);
 
         if (c == -1)
             break;
 
         switch (c) {
-        case 'c':
-            config_path = optarg;
-            break;
+            case 'c':
+                config_path = optarg;
+                break;
 
-        case 'd':
-            daemon = true;
-            break;
+            case 'd':
+                daemon = true;
+                break;
 
-        case 'p':
-            pidfile = optarg;
-            break;
+            case 'p':
+                pidfile = optarg;
+                break;
 
-        case 'v':
-            Logger::verbosity((LogLevel)((int) Logger::verbosity() + 1));
-            /*if (optarg) {
-                if (!logger::verbosity(optarg))
-                    logger::error() << "Unknown verbosity level '" << optarg << "'";
-            } else {
-                logger::max_pri(LOG_INFO);
-            }*/
-            break;
+            case 'v':
+                Logger::verbosity((LogLevel) ((int) Logger::verbosity() + 1));
+                /*if (optarg) {
+                    if (!logger::verbosity(optarg))
+                        logger::error() << "Unknown verbosity level '" << optarg << "'";
+                } else {
+                    logger::max_pri(LOG_INFO);
+                }*/
+                break;
         }
     }
 
     Logger::notice()
-        << "ndppd (NDP Proxy Daemon) version " NDPPD_VERSION << Logger::endl
-        << "Using configuration file '" << config_path << "'";
+            << "ndppd (NDP Proxy Daemon) version " NDPPD_VERSION << Logger::endl
+            << "Using configuration file '" << config_path << "'";
 
     // Load configuration.
 
@@ -392,15 +383,15 @@ int main(int argc, char* argv[], char* env[])
         gettimeofday(&t2, 0);
 
         elapsed_time =
-            ((t2.tv_sec  - t1.tv_sec)*   1000) +
-            ((t2.tv_usec - t1.tv_usec) / 1000);
+                ((t2.tv_sec - t1.tv_sec) * 1000) +
+                ((t2.tv_usec - t1.tv_usec) / 1000);
 
-        t1.tv_sec  = t2.tv_sec;
+        t1.tv_sec = t2.tv_sec;
         t1.tv_usec = t2.tv_usec;
 
         if (rule::any_auto())
             route::update(elapsed_time);
-        
+
         session::update_all(elapsed_time);
     }
 

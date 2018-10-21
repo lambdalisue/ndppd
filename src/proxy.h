@@ -51,10 +51,6 @@ public:
 
     std::shared_ptr<rule> add_rule(const address& addr, bool aut = false);
     
-    std::list<std::shared_ptr<rule> >::iterator rules_begin();
-    
-    std::list<std::shared_ptr<rule> >::iterator rules_end();
-
     const std::shared_ptr<iface>& ifa() const;
     
     bool promiscuous() const;
@@ -87,10 +83,7 @@ public:
 
     void deadtime(int val);
 
-    Range<std::list<std::shared_ptr<rule> >::const_iterator> rules() const {
-        return {_rules.cbegin(), _rules.cend()};
-    }
-
+    const Range<std::list<std::shared_ptr<rule> >::const_iterator> rules() const;
 
 private:
     static std::list<std::shared_ptr<proxy> > _list;

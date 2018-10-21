@@ -24,6 +24,7 @@
 #include <net/ethernet.h>
 
 #include "ndppd.h"
+#include "range.h"
 
 NDPPD_NS_BEGIN
 
@@ -67,19 +68,15 @@ public:
     // Returns the name of the interface.
     const std::string& name() const;
     
-    std::list<std::weak_ptr<proxy> >::iterator serves_begin();
-    
-    std::list<std::weak_ptr<proxy> >::iterator serves_end();
-    
     void add_serves(const std::shared_ptr<proxy>& proxy);
-    
-    std::list<std::weak_ptr<proxy> >::iterator parents_begin();
-    
-    std::list<std::weak_ptr<proxy> >::iterator parents_end();
-    
+
     void add_parent(const std::shared_ptr<proxy>& parent);
     
     static std::map<std::string, std::weak_ptr<iface> > _map;
+
+    const Range<std::list<std::weak_ptr<proxy>>::const_iterator> parents() const;
+    const Range<std::list<std::weak_ptr<proxy>>::const_iterator> serves() const;
+
 
 private:
 
@@ -130,6 +127,8 @@ private:
 
     // Constructor.
     iface();
+
+
 };
 
 NDPPD_NS_END

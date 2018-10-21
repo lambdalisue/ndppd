@@ -232,16 +232,6 @@ std::shared_ptr<rule> proxy::add_rule(const address& addr, bool aut)
     return ru;
 }
 
-std::list<std::shared_ptr<rule> >::iterator proxy::rules_begin()
-{
-    return _rules.begin();
-}
-
-std::list<std::shared_ptr<rule> >::iterator proxy::rules_end()
-{
-    return _rules.end();
-}
-
 void proxy::remove_session(const std::shared_ptr<session>& se)
 {
     _sessions.remove(se);
@@ -326,6 +316,11 @@ void proxy::timeout(int val)
 {
     _timeout = (val >= 0) ? val : 500;
 }
+
+const Range<std::list<std::shared_ptr<rule> >::const_iterator> proxy::rules() const {
+    return {_rules.cbegin(), _rules.cend()};
+}
+
 
 NDPPD_NS_END
 
