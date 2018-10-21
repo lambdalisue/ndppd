@@ -18,8 +18,10 @@
 
 #include <sstream>
 
-namespace ndppd {
-    enum class LogLevel {
+namespace ndppd
+{
+    enum class LogLevel
+    {
         Error,
         Warning,
         Notice,
@@ -27,14 +29,17 @@ namespace ndppd {
         Debug
     };
 
-    class Logger {
+    class Logger
+    {
     public:
         static std::string format(const char *fmt, ...);
 
 #ifndef DISABLE_SYSLOG
+
         static bool syslog(bool enable);
 
         static bool syslog();
+
 #endif
 
         static bool verbosity(const std::string &name);

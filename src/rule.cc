@@ -36,14 +36,15 @@ rule::rule()
 {
 }
 
-std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const Cidr& cidr, const std::shared_ptr<iface>& ifa)
+std::shared_ptr<rule>
+rule::create(const std::shared_ptr<proxy> &pr, const Cidr &cidr, const std::shared_ptr<iface> &ifa)
 {
     std::shared_ptr<rule> ru(new rule());
-    ru->_ptr  = ru;
-    ru->_pr   = pr;
-    ru->_daughter  = ifa;
+    ru->_ptr = ru;
+    ru->_pr = pr;
+    ru->_daughter = ifa;
     ru->_cidr = cidr;
-    ru->_aut  = false;
+    ru->_aut = false;
     _any_iface = true;
     unsigned int ifindex;
 
@@ -61,26 +62,26 @@ std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const Cidr&
     return ru;
 }
 
-std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy>& pr, const Cidr& cidr, bool aut)
+std::shared_ptr<rule> rule::create(const std::shared_ptr<proxy> &pr, const Cidr &cidr, bool aut)
 {
     std::shared_ptr<rule> ru(new rule());
-    ru->_ptr   = ru;
-    ru->_pr    = pr;
-    ru->_cidr  = cidr;
-    ru->_aut   = aut;
-    _any_aut   = _any_aut || aut;
-    
+    ru->_ptr = ru;
+    ru->_pr = pr;
+    ru->_cidr = cidr;
+    ru->_aut = aut;
+    _any_aut = _any_aut || aut;
+
     if (aut == false)
         _any_static = true;
 
     Logger::debug()
-        << "rule::create() if=" << pr->ifa()->name().c_str() << ", cidr=" << cidr
-        << ", auto=" << (aut ? "yes" : "no");
+            << "rule::create() if=" << pr->ifa()->name().c_str() << ", cidr=" << cidr
+            << ", auto=" << (aut ? "yes" : "no");
 
     return ru;
 }
 
-const Cidr& rule::cidr() const
+const Cidr &rule::cidr() const
 {
     return _cidr;
 }
@@ -120,7 +121,7 @@ bool rule::any_static()
     return _any_static;
 }
 
-bool rule::check(const Address& addr) const
+bool rule::check(const Address &addr) const
 {
     return _cidr % addr;
 }

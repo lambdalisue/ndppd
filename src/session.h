@@ -22,11 +22,14 @@
 
 #include "ndppd.h"
 
-namespace ndppd {
+namespace ndppd
+{
     class proxy;
+
     class iface;
 
-    class session {
+    class session
+    {
     private:
         std::weak_ptr<session> _ptr;
 
@@ -76,17 +79,18 @@ namespace ndppd {
         // Destructor.
         ~session();
 
-        static std::shared_ptr<session> create(const std::shared_ptr<proxy>& pr, const Address& taddr, bool autowire, bool keepalive, int retries);
+        static std::shared_ptr<session>
+        create(const std::shared_ptr<proxy> &pr, const Address &taddr, bool autowire, bool keepalive, int retries);
 
-        void add_iface(const std::shared_ptr<iface>& ifa);
+        void add_iface(const std::shared_ptr<iface> &ifa);
 
-        void add_pending(const Address& addr);
+        void add_pending(const Address &addr);
 
-        const Address& taddr() const;
+        const Address &taddr() const;
 
-        const Address& daddr() const;
+        const Address &daddr() const;
 
-        const Address& saddr() const;
+        const Address &saddr() const;
 
         bool autowire() const;
 
@@ -106,11 +110,11 @@ namespace ndppd {
 
         void handle_advert();
 
-        void handle_advert(const Address& saddr, const std::string& ifname, bool use_via);
+        void handle_advert(const Address &saddr, const std::string &ifname, bool use_via);
 
         void touch();
 
-        void send_advert(const Address& daddr);
+        void send_advert(const Address &daddr);
 
         void send_solicit();
 

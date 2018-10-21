@@ -25,24 +25,29 @@
 #include "socket.h"
 #include "ndppd.h"
 
-namespace ndppd {
-
-    namespace {
+namespace ndppd
+{
+    namespace
+    {
         std::unique_ptr<Socket> _socket;
         std::set<Address> local_addresses;
 
-        void handler(Socket &socket) {
+        void handler(Socket &socket)
+        {
 
         }
 
-        void handle_address(nlmsghdr *nlh) {
+        void handle_address(nlmsghdr *nlh)
+        {
             static Address localhost("::1");
 
             auto data = (ifaddrmsg *) NLMSG_DATA(nlh);
             int len = IFA_PAYLOAD(nlh);
 
-            for (auto rta = IFA_RTA(data); RTA_OK(rta, len); rta = RTA_NEXT(rta, len)) {
-                if (rta->rta_type == IFA_ADDRESS) {
+            for (auto rta = IFA_RTA(data); RTA_OK(rta, len); rta = RTA_NEXT(rta, len))
+            {
+                if (rta->rta_type == IFA_ADDRESS)
+                {
                     Address address = Address(*(in6_addr *) RTA_DATA(rta));
                     if (address == localhost)
                         continue;
@@ -54,21 +59,26 @@ namespace ndppd {
 
     }
 
-    void Netlink::initialize() {
+    void Netlink::initialize()
+    {
         _socket = std::move(Socket::create(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE));
         _socket->bind((sockaddr_nl) { AF_NETLINK, 0, 0, RTMGRP_IPV6_ROUTE | RTMGRP_IPV6_IFADDR });
     }
 
-    void Netlink::finalize() {
+    void Netlink::finalize()
+    {
         _socket.reset();
     }
 
-    const Range<std::set<Address>::const_iterator> Netlink::local_addresses() {
+    const Range<std::set<Address>::const_iterator> Netlink::local_addresses()
+    {
         return { ndppd::local_addresses.cbegin(), ndppd::local_addresses.cend() };
     }
 
-    void Netlink::load_local_ips() {
-        struct {
+    void Netlink::load_local_ips()
+    {
+        struct
+        {
             nlmsghdr hdr;
             rtgenmsg msg;
         } payload{{ NLMSG_LENGTH(sizeof(rtgenmsg)), RTM_GETADDR, NLM_F_REQUEST | NLM_F_DUMP, 1 },
@@ -84,8 +94,10 @@ namespace ndppd {
         if (len < 0)
             throw std::system_error(errno, std::generic_category());
 
-        for (auto nlh = (nlmsghdr *) (void *) buf; NLMSG_OK(nlh, len); nlh = NLMSG_NEXT(nlh, len)) {
-            switch (nlh->nlmsg_type) {
+        for (auto nlh = (nlmsghdr *) (void *) buf; NLMSG_OK(nlh, len); nlh = NLMSG_NEXT(nlh, len))
+        {
+            switch (nlh->nlmsg_type)
+            {
                 case NLMSG_ERROR:
                     return;
 
@@ -106,13 +118,16 @@ namespace ndppd {
 
     }
 
-    bool Netlink::is_local(const Address &address) {
+    bool Netlink::is_local(const Address &address)
+    {
         return ndppd::local_addresses.find(address) != ndppd::local_addresses.end();
     }
 
 
-    void Netlink::test() {
-        struct {
+    void Netlink::test()
+    {
+        struct
+        {
             nlmsghdr hdr;
             rtgenmsg gen;
         } payload{{ NLMSG_LENGTH(sizeof(rtgenmsg)), RTM_GETROUTE, NLM_F_REQUEST | NLM_F_DUMP, 1 },
@@ -128,7 +143,8 @@ namespace ndppd {
         if (len < 0)
             throw std::system_error(errno, std::generic_category());
 
-        for (auto nh = (nlmsghdr *) (void *) buf; NLMSG_OK(nh, len); NLMSG_NEXT(nh, len)) {
+        for (auto nh = (nlmsghdr *) (void *) buf; NLMSG_OK(nh, len); NLMSG_NEXT(nh, len))
+        {
             auto entry = (rtmsg *) NLMSG_DATA(nh);
 
             // entry->rtm_dst_len
@@ -139,8 +155,10 @@ namespace ndppd {
             auto rta = RTM_RTA(entry);
             auto rta_len = RTM_PAYLOAD(nh);
 
-            for (; RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
-                if (rta->rta_type == RTA_DST) {
+            for (; RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len))
+            {
+                if (rta->rta_type == RTA_DST)
+                {
 
                 }
             }

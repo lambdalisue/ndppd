@@ -21,10 +21,10 @@
 #include <memory>
 #include <sys/socket.h>
 
-namespace ndppd {
-
-
-    class Socket {
+namespace ndppd
+{
+    class Socket
+    {
         using SocketHandler = void (*)(Socket &socket);
 
     private:
@@ -36,6 +36,7 @@ namespace ndppd {
 
     public:
         static std::unique_ptr<Socket> create(int domain, int type, int protocol);
+
         static void poll();
 
         ~Socket();
@@ -51,24 +52,27 @@ namespace ndppd {
          *
          */
         template<typename T>
-        void bind(const T &sa) const {
+        void bind(const T &sa) const
+        {
             if ((::bind(_fd, (const sockaddr *) &sa, sizeof(T))) < 0)
                 throw std::system_error(errno, std::generic_category());
         }
 
         template<typename T>
-        ssize_t recvmsg(T &sa, void *msg, size_t size, bool wait = false) const {
+        ssize_t recvmsg(T &sa, void *msg, size_t size, bool wait = false) const
+        {
             assert(msg != nullptr);
-            iovec iov = {msg, size};
-            msghdr mhdr = {&sa, sizeof(sa), &iov, 1};
+            iovec iov = { msg, size };
+            msghdr mhdr = { &sa, sizeof(sa), &iov, 1 };
             return ::recvmsg(_fd, &mhdr, wait ? 0 : MSG_DONTWAIT);
         }
 
         template<typename T>
-        ssize_t sendmsg(const T &sa, const void *msg, size_t size, bool wait = true) const {
+        ssize_t sendmsg(const T &sa, const void *msg, size_t size, bool wait = true) const
+        {
             assert(msg != nullptr);
-            iovec iov = {(void *) msg, size};
-            msghdr mhdr = {(void *) &sa, sizeof(sa), &iov, 1, nullptr, 0, 0};
+            iovec iov = { (void *) msg, size };
+            msghdr mhdr = { (void *) &sa, sizeof(sa), &iov, 1, nullptr, 0, 0 };
             return ::sendmsg(_fd, &mhdr, wait ? 0 : MSG_DONTWAIT);
         }
     };

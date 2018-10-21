@@ -27,11 +27,11 @@
 
 #include "conf.h"
 
-namespace ndppd {
+namespace ndppd
+{
     conf::conf() :
             _is_block(false)
     {
-
     }
 
     conf::operator int() const
@@ -39,7 +39,7 @@ namespace ndppd {
         return as_int();
     }
 
-    conf::operator const std::string&() const
+    conf::operator const std::string &() const
     {
         return as_str();
     }
@@ -57,7 +57,7 @@ namespace ndppd {
             return false;
     }
 
-    const std::string& conf::as_str() const
+    const std::string &conf::as_str() const
     {
         return _value;
     }
@@ -72,26 +72,30 @@ namespace ndppd {
         return _value == "";
     }
 
-    std::shared_ptr<conf> conf::load(const std::string& path)
+    std::shared_ptr<conf> conf::load(const std::string &path)
     {
-        try {
+        try
+        {
             std::ifstream ifs;
             ifs.exceptions(std::ifstream::failbit | std::ifstream::badbit);
             ifs.open(path.c_str(), std::ios::in);
             ifs.exceptions(std::ifstream::badbit);
             std::string buf((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
 
-            const char* c_buf = buf.c_str();
+            const char *c_buf = buf.c_str();
 
             std::shared_ptr<conf> cf(new conf);
 
-            if (cf->parse_block(&c_buf)) {
+            if (cf->parse_block(&c_buf))
+            {
                 cf->dump(LogLevel::Debug);
                 return cf;
             }
 
             Logger::error() << "Could not parse configuration file";
-        } catch (std::ifstream::failure e) {
+        }
+        catch (std::ifstream::failure e)
+        {
             Logger::error() << "Failed to load configuration file '" << path << "'";
         }
 
@@ -103,25 +107,34 @@ namespace ndppd {
         return _is_block;
     }
 
-    const char* conf::skip(const char* str, bool newlines)
+    const char *conf::skip(const char *str, bool newlines)
     {
-        while (*str) {
+        while (*str)
+        {
             while (*str && isspace(*str) && ((*str != '\n') || newlines))
                 str++;
 
-            if ((*str == '#') || ((*str == '/') && (*(str + 1) == '/'))) {
-                while (*str && (*str != '\n')) {
+            if ((*str == '#') || ((*str == '/') && (*(str + 1) == '/')))
+            {
+                while (*str && (*str != '\n'))
+                {
                     str++;
                 }
-            } else if ((*str == '/') && (*(str + 1) == '*')) {
-                while (*str) {
-                    if ((*str == '*') && (*(str + 1) == '/')) {
+            }
+            else if ((*str == '/') && (*(str + 1) == '*'))
+            {
+                while (*str)
+                {
+                    if ((*str == '*') && (*(str + 1) == '/'))
+                    {
                         str += 2;
                         break;
                     }
                     str++;
                 }
-            } else {
+            }
+            else
+            {
                 break;
             }
         }
@@ -129,38 +142,45 @@ namespace ndppd {
         return str;
     }
 
-    bool conf::parse_block(const char** str)
+    bool conf::parse_block(const char **str)
     {
-        const char* p = *str;
+        const char *p = *str;
 
         _is_block = true;
 
-        while (*p) {
+        while (*p)
+        {
             std::stringstream ss;
 
             p = skip(p, true);
 
-            if ((*p == '}') || !*p) {
+            if ((*p == '}') || !*p)
+            {
                 *str = p;
                 return true;
             }
 
-            while (isalnum(*p) || (*p == '_') || (*p == '-')) {
+            while (isalnum(*p) || (*p == '_') || (*p == '-'))
+            {
                 ss << *p++;
             }
 
             p = skip(p, false);
 
-            if (*p == '=') {
+            if (*p == '=')
+            {
                 p++;
                 p = skip(p, false);
             }
 
             std::shared_ptr<conf> cf(new conf);
 
-            if (cf->parse(&p)) {
+            if (cf->parse(&p))
+            {
                 _map.insert(std::pair<std::string, std::shared_ptr<conf> >(ss.str(), cf));
-            } else {
+            }
+            else
+            {
                 return false;
             }
         }
@@ -169,19 +189,23 @@ namespace ndppd {
         return true;
     }
 
-    bool conf::parse(const char** str)
+    bool conf::parse(const char **str)
     {
-        const char* p = *str;
+        const char *p = *str;
         std::stringstream ss;
 
         p = skip(p, false);
 
-        if ((*p == '\'') || (*p == '"')) {
+        if ((*p == '\'') || (*p == '"'))
+        {
             for (char e = *p++; *p && (*p != e) && (*p != '\n'); p++)
                 ss << *p;
             p = skip(p, false);
-        } else {
-            while (*p && isgraph(*p) && (*p != '{') && (*p != '}')) {
+        }
+        else
+        {
+            while (*p && isgraph(*p) && (*p != '{') && (*p != '}'))
+            {
                 ss << *p++;
             }
         }
@@ -190,14 +214,17 @@ namespace ndppd {
 
         p = skip(p, false);
 
-        if (*p == '{') {
+        if (*p == '{')
+        {
             p++;
 
-            if (!parse_block(&p)) {
+            if (!parse_block(&p))
+            {
                 return false;
             }
 
-            if (*p != '}') {
+            if (*p != '}')
+            {
                 return false;
             }
 
@@ -214,23 +241,27 @@ namespace ndppd {
         dump(l, 0);
     }
 
-    void conf::dump(Logger& l, int level) const
+    void conf::dump(Logger &l, int level) const
     {
         std::string pfx;
-        for (int i = 0; i < level; i++) {
+        for (int i = 0; i < level; i++)
+        {
             pfx += "    ";
         }
 
-        if (_value != "") {
+        if (_value != "")
+        {
             l << _value << " ";
         }
 
-        if (_is_block) {
+        if (_is_block)
+        {
             l << "{" << Logger::endl;
 
             std::multimap<std::string, std::shared_ptr<conf> >::const_iterator it;
 
-            for (it = _map.begin(); it != _map.end(); it++) {
+            for (it = _map.begin(); it != _map.end(); it++)
+            {
                 l << pfx << "    " << it->first << " ";
                 it->second->dump(l, level + 1);
             }
@@ -241,15 +272,16 @@ namespace ndppd {
         l << Logger::endl;
     }
 
-    std::shared_ptr<conf> conf::operator()(const std::string& name, int index) const
+    std::shared_ptr<conf> conf::operator()(const std::string &name, int index) const
     {
         return find(name, index);
     }
 
-    std::shared_ptr<conf> conf::find(const std::string& name, int index) const
+    std::shared_ptr<conf> conf::find(const std::string &name, int index) const
     {
         std::multimap<std::string, std::shared_ptr<conf> >::const_iterator it;
-        for (it = _map.find(name); it != _map.end(); it++) {
+        for (it = _map.find(name); it != _map.end(); it++)
+        {
             if (index-- <= 0)
                 return it->second;
         }
@@ -257,12 +289,12 @@ namespace ndppd {
         return std::shared_ptr<conf>();
     }
 
-    std::shared_ptr<conf> conf::operator[](const std::string& name) const
+    std::shared_ptr<conf> conf::operator[](const std::string &name) const
     {
         return find(name, 0);
     }
 
-    std::vector<std::shared_ptr<conf> > conf::find_all(const std::string& name) const
+    std::vector<std::shared_ptr<conf> > conf::find_all(const std::string &name) const
     {
         std::vector<std::shared_ptr<conf> > vec;
 
@@ -273,14 +305,15 @@ namespace ndppd {
 
         ret = _map.equal_range(name);
 
-        for (it = ret.first; it != ret.second; it++) {
+        for (it = ret.first; it != ret.second; it++)
+        {
             vec.push_back(it->second);
         }
 
         return vec;
     }
 
-    conf::operator const std::string&()
+    conf::operator const std::string &()
     {
         return _value;
     }

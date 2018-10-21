@@ -26,24 +26,27 @@
 
 #include "cidr.h"
 
-namespace ndppd {
-
+namespace ndppd
+{
     class iface;
+
     class proxy;
 
-    class rule {
+    class rule
+    {
     public:
-        static std::shared_ptr<rule> create(const std::shared_ptr<proxy>& pr, const Cidr& cidr, const std::shared_ptr<iface>& ifa);
+        static std::shared_ptr<rule>
+        create(const std::shared_ptr<proxy> &pr, const Cidr &cidr, const std::shared_ptr<iface> &ifa);
 
-        static std::shared_ptr<rule> create(const std::shared_ptr<proxy>& pr, const Cidr& cidr, bool stc = true);
+        static std::shared_ptr<rule> create(const std::shared_ptr<proxy> &pr, const Cidr &cidr, bool stc = true);
 
-        const Cidr& cidr() const;
+        const Cidr &cidr() const;
 
         std::shared_ptr<iface> daughter() const;
 
         bool is_auto() const;
 
-        bool check(const Address& addr) const;
+        bool check(const Address &addr) const;
 
         static bool any_auto();
 

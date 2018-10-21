@@ -19,8 +19,10 @@
 #include <netinet/in.h>
 #include "logger.h"
 
-namespace ndppd {
-    class Address {
+namespace ndppd
+{
+    class Address
+    {
     public:
         Address();
 
@@ -39,7 +41,9 @@ namespace ndppd {
         std::string to_string() const;
 
         bool operator==(const Address &address) const;
+
         bool operator!=(const Address &address) const;
+
         bool operator<(const Address &address) const;
 
         explicit operator bool() const;

@@ -35,25 +35,31 @@
 #include "ndppd.h"
 #include "logger.h"
 
-namespace ndppd {
-    namespace {
+namespace ndppd
+{
+    namespace
+    {
         bool pollfds_dirty;
         std::vector<pollfd> pollfds;
         std::set<Socket *> sockets;
     }
 
-    std::unique_ptr<Socket> Socket::create(int domain, int type, int protocol) {
+    std::unique_ptr<Socket> Socket::create(int domain, int type, int protocol)
+    {
         return std::unique_ptr<Socket>(new Socket(domain, type, protocol));
     }
 
-    void Socket::poll() {
+    void Socket::poll()
+    {
         int len;
 
-        if (pollfds_dirty) {
+        if (pollfds_dirty)
+        {
             pollfds.resize(sockets.size());
 
             std::transform(sockets.cbegin(), sockets.cend(), pollfds.begin(),
-                           [](const Socket *socket) {
+                           [](const Socket *socket)
+                           {
                                return (pollfd) { socket->_fd, POLLIN };
                            });
 
@@ -63,17 +69,21 @@ namespace ndppd {
         if ((len = ::poll(&pollfds[0], pollfds.size(), 50)) < 0)
             throw std::system_error(errno, std::generic_category());
 
-        for (auto it : pollfds) {
-            if (it.revents & POLLIN) {
+        for (auto it : pollfds)
+        {
+            if (it.revents & POLLIN)
+            {
                 auto s_it = std::find_if(sockets.cbegin(), sockets.cend(),
-                                         [it](Socket *socket) { return socket->_fd == it.fd; });
+                                         [it](Socket *socket)
+                                         { return socket->_fd == it.fd; });
                 if (s_it != sockets.cend() && (*s_it)->_handler)
                     (*s_it)->_handler(**s_it);
             }
         }
     }
 
-    Socket::Socket(int domain, int type, int protocol) : _handler(nullptr) {
+    Socket::Socket(int domain, int type, int protocol) : _handler(nullptr)
+    {
         // Create the socket.
         if ((_fd = ::socket(domain, type, protocol)) < 0)
             throw std::system_error(errno, std::generic_category());
@@ -81,13 +91,15 @@ namespace ndppd {
         pollfds_dirty = true;
     }
 
-    Socket::~Socket() {
+    Socket::~Socket()
+    {
         ::close(_fd);
         sockets.erase(this);
         pollfds_dirty = true;
     }
 
-    bool Socket::if_allmulti(const std::string &name, bool state) const {
+    bool Socket::if_allmulti(const std::string &name, bool state) const
+    {
         ifreq ifr{};
 
         Logger::debug() << "Socket::if_allmulti() state=" << state << ", _name=\"" << name << "\"";
@@ -110,7 +122,8 @@ namespace ndppd {
         return old_state;
     }
 
-    bool Socket::if_promisc(const std::string &name, bool state) const {
+    bool Socket::if_promisc(const std::string &name, bool state) const
+    {
         ifreq ifr{};
 
         Logger::debug() << "Socket::if_promisc() state=" << state << ", _name=\"" << name << "\"";

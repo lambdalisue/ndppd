@@ -19,8 +19,10 @@
 #include <netinet/in.h>
 #include "address.h"
 
-namespace ndppd {
-    class Cidr {
+namespace ndppd
+{
+    class Cidr
+    {
     public:
         Cidr();
 
@@ -39,6 +41,7 @@ namespace ndppd {
         int prefix() const;
 
         bool operator%(const Address &address) const;
+
     private:
         in6_addr _addr;
         int _prefix;

@@ -22,60 +22,70 @@
 #include "iface.h"
 #include "session.h"
 
-namespace ndppd {
-
+namespace ndppd
+{
     std::list<std::weak_ptr<session> > session::_sessions;
 
     void session::update_all(int elapsed_time)
     {
         for (auto it = _sessions.begin();
-             it != _sessions.end(); ) {
+             it != _sessions.end();)
+        {
 
             auto se = it->lock();
 
-            if (!se) {
+            if (!se)
+            {
                 _sessions.erase(it++);
                 continue;
             }
 
             it++;
 
-            if ((se->_ttl -= elapsed_time) >= 0) {
+            if ((se->_ttl -= elapsed_time) >= 0)
+            {
                 continue;
             }
 
             auto pr = se->_pr.lock();
 
-            switch (se->_status) {
+            switch (se->_status)
+            {
 
                 case session::WAITING:
-                    if (se->_fails < se->_retries) {
+                    if (se->_fails < se->_retries)
+                    {
                         Logger::debug() << "session will keep trying [taddr=" << se->_taddr << "]";
 
-                        se->_ttl     = se->_pr.lock()->timeout();
+                        se->_ttl = se->_pr.lock()->timeout();
                         se->_fails++;
 
                         // Send another solicit
                         se->send_solicit();
-                    } else {
+                    }
+                    else
+                    {
 
                         Logger::debug() << "session is now invalid [taddr=" << se->_taddr << "]";
 
                         se->_status = session::INVALID;
-                        se->_ttl    = pr->deadtime();
+                        se->_ttl = pr->deadtime();
                     }
                     break;
 
                 case session::RENEWING:
                     Logger::debug() << "session is became invalid [taddr=" << se->_taddr << "]";
 
-                    if (se->_fails < se->_retries) {
-                        se->_ttl     = pr->timeout();
+                    if (se->_fails < se->_retries)
+                    {
+                        se->_ttl = pr->timeout();
                         se->_fails++;
 
                         // Send another solicit
                         se->send_solicit();
-                    } else {
+                    }
+                    else
+                    {
                         pr->remove_session(se);
                     }
                     break;
@@ -85,14 +95,16 @@ namespace ndppd {
                         se->keepalive() == true)
                     {
                         Logger::debug() << "session is renewing [taddr=" << se->_taddr << "]";
-                        se->_status  = session::RENEWING;
-                        se->_ttl     = pr->timeout();
-                        se->_fails   = 0;
+                        se->_status = session::RENEWING;
+                        se->_ttl = pr->timeout();
+                        se->_fails = 0;
                         se->_touched = false;
 
                         // Send another solicit to make sure the route is still valid
                         se->send_solicit();
-                    } else {
+                    }
+                    else
+                    {
                         pr->remove_session(se);
                     }
                     break;
@@ -107,37 +119,41 @@ namespace ndppd {
     {
         Logger::debug() << "session::~session() this=" << Logger::format("%x", this);
 
-        if (_wired) {
-            for (auto &_iface : _ifaces) {
+        if (_wired)
+        {
+            for (auto &_iface : _ifaces)
+            {
                 //handle_auto_unwire(_iface->name());
             }
         }
     }
 
-    std::shared_ptr<session> session::create(const std::shared_ptr<proxy>& pr, const Address& taddr, bool auto_wire, bool keepalive, int retries)
+    std::shared_ptr<session>
+    session::create(const std::shared_ptr<proxy> &pr, const Address &taddr, bool auto_wire, bool keepalive, int retries)
     {
         std::shared_ptr<session> se(new session());
 
-        se->_ptr       = se;
-        se->_pr        = pr;
-        se->_taddr     = taddr;
-        se->_autowire  = auto_wire;
+        se->_ptr = se;
+        se->_pr = pr;
+        se->_taddr = taddr;
+        se->_autowire = auto_wire;
         se->_keepalive = keepalive;
-        se->_retries   = retries;
-        se->_wired     = false;
-        se->_ttl       = pr->ttl();
-        se->_touched   = false;
+        se->_retries = retries;
+        se->_wired = false;
+        se->_ttl = pr->ttl();
+        se->_touched = false;
 
         _sessions.push_back(se);
 
         Logger::debug()
-                << "session::create() pr=" << Logger::format("%x", (proxy* )pr.get()) << ", proxy=" << ((pr->ifa()) ? pr->ifa()->name() : "null")
-                << ", taddr=" << taddr << " =" << Logger::format("%x", (session* )se.get());
+                << "session::create() pr=" << Logger::format("%x", (proxy *) pr.get()) << ", proxy="
+                << ((pr->ifa()) ? pr->ifa()->name() : "null")
+                << ", taddr=" << taddr << " =" << Logger::format("%x", (session *) se.get());
 
         return se;
     }
 
-    void session::add_iface(const std::shared_ptr<iface>& ifa)
+    void session::add_iface(const std::shared_ptr<iface> &ifa)
     {
         if (std::find(_ifaces.begin(), _ifaces.end(), ifa) != _ifaces.end())
             return;
@@ -145,7 +161,7 @@ namespace ndppd {
         _ifaces.push_back(ifa);
     }
 
-    void session::add_pending(const Address& addr)
+    void session::add_pending(const Address &addr)
     {
         _pending.insert(Address(addr));
     }
@@ -154,7 +170,8 @@ namespace ndppd {
     {
         Logger::debug() << "session::send_solicit() (_ifaces.size() = " << _ifaces.size() << ")";
 
-        for (auto &iface : _ifaces) {
+        for (auto &iface : _ifaces)
+        {
             Logger::debug() << " - " << iface->name();
             iface->write_solicit(_taddr);
         }
@@ -166,7 +183,8 @@ namespace ndppd {
         {
             _touched = true;
 
-            if (status() == session::WAITING || status() == session::INVALID) {
+            if (status() == session::WAITING || status() == session::INVALID)
+            {
                 _ttl = _pr.lock()->timeout();
 
                 Logger::debug() << "session is now probing [taddr=" << _taddr << "]";
@@ -176,15 +194,16 @@ namespace ndppd {
         }
     }
 
-    void session::send_advert(const Address& daddr)
+    void session::send_advert(const Address &daddr)
     {
         auto pr = _pr.lock();
         pr->ifa()->write_advert(daddr, _taddr, pr->router());
     }
 
-    void session::handle_advert(const Address& saddr, const std::string& ifname, bool use_via)
+    void session::handle_advert(const Address &saddr, const std::string &ifname, bool use_via)
     {
-        if (_autowire && _status == WAITING) {
+        if (_autowire && _status == WAITING)
+        {
             // handle_auto_wire(saddr, ifname, use_via);
         }
 
@@ -199,17 +218,20 @@ namespace ndppd {
         Logger::debug()
                 << "session::handle_advert() taddr=" << _taddr << ", ttl=" << pr->ttl();
 
-        if (_status != VALID) {
+        if (_status != VALID)
+        {
             _status = VALID;
 
             Logger::debug() << "session is active [taddr=" << _taddr << "]";
         }
 
-        _ttl    = pr->ttl();
-        _fails  = 0;
+        _ttl = pr->ttl();
+        _fails = 0;
 
-        if (!_pending.empty()) {
-            for (auto &address : _pending) {
+        if (!_pending.empty())
+        {
+            for (auto &address : _pending)
+            {
                 Logger::debug() << " - forward to " << address;
                 send_advert(address);
             }
@@ -217,7 +239,7 @@ namespace ndppd {
         }
     }
 
-    const Address& session::taddr() const
+    const Address &session::taddr() const
     {
         return _taddr;
     }

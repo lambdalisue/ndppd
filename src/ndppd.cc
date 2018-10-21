@@ -40,9 +40,11 @@
 
 using namespace ndppd;
 
-static int daemonize() {
+static int daemonize()
+{
     pid_t pid = fork();
-    if (pid < 0) {
+    if (pid < 0)
+    {
         Logger::error() << "Failed to fork during daemonize: " << Logger::err();
         return -1;
     }
@@ -53,12 +55,14 @@ static int daemonize() {
     umask(0);
 
     pid_t sid = setsid();
-    if (sid < 0) {
+    if (sid < 0)
+    {
         Logger::error() << "Failed to setsid during daemonize: " << Logger::err();
         return -1;
     }
 
-    if (chdir("/") < 0) {
+    if (chdir("/") < 0)
+    {
         Logger::error() << "Failed to change path during daemonize: " << Logger::err();
         return -1;
     }
@@ -70,7 +74,8 @@ static int daemonize() {
     return 0;
 }
 
-static std::shared_ptr<conf> load_config(const std::string &path) {
+static std::shared_ptr<conf> load_config(const std::string &path)
+{
     std::shared_ptr<conf> cf, x_cf;
 
     if (!(cf = conf::load(path)))
@@ -80,10 +85,12 @@ static std::shared_ptr<conf> load_config(const std::string &path) {
 
     std::vector<std::shared_ptr<conf> > proxies(cf->find_all("proxy"));
 
-    for (p_it = proxies.begin(); p_it != proxies.end(); p_it++) {
+    for (p_it = proxies.begin(); p_it != proxies.end(); p_it++)
+    {
         std::shared_ptr<conf> pr_cf = *p_it;
 
-        if (pr_cf->empty()) {
+        if (pr_cf->empty())
+        {
             Logger::error() << "'proxy' section is missing interface name";
             return {};
         }
@@ -92,40 +99,51 @@ static std::shared_ptr<conf> load_config(const std::string &path) {
 
         std::vector<std::shared_ptr<conf> > rules(pr_cf->find_all("rule"));
 
-        for (r_it = rules.begin(); r_it != rules.end(); r_it++) {
+        for (r_it = rules.begin(); r_it != rules.end(); r_it++)
+        {
             std::shared_ptr<conf> ru_cf = *r_it;
 
-            if (ru_cf->empty()) {
+            if (ru_cf->empty())
+            {
                 Logger::error() << "'rule' is missing an IPv6 address/net";
                 return {};
             }
 
             Cidr addr(*ru_cf);
 
-            if (x_cf = ru_cf->find("iface")) {
-                if (ru_cf->find("static") || ru_cf->find("auto")) {
+            if (x_cf = ru_cf->find("iface"))
+            {
+                if (ru_cf->find("static") || ru_cf->find("auto"))
+                {
                     Logger::error()
                             << "Only one of 'iface', 'auto' and 'static' may "
                             << "be specified.";
                     return {};
                 }
-                if ((const std::string &) *x_cf == "") {
+                if ((const std::string &) *x_cf == "")
+                {
                     Logger::error() << "'iface' expected an interface name";
                     return {};
                 }
-            } else if (ru_cf->find("static")) {
-                if (ru_cf->find("auto")) {
+            }
+            else if (ru_cf->find("static"))
+            {
+                if (ru_cf->find("auto"))
+                {
                     Logger::error()
                             << "Only one of 'iface', 'auto' and 'static' may "
                             << "be specified.";
                     return {};
                 }
-                if (addr.prefix() <= 120) {
+                if (addr.prefix() <= 120)
+                {
                     Logger::warning()
                             << "Low prefix length (" << addr.prefix()
                             << " <= 120) when using 'static' method";
                 }
-            } else if (!ru_cf->find("auto")) {
+            }
+            else if (!ru_cf->find("auto"))
+            {
                 Logger::error()
                         << "You must specify either 'iface', 'auto' or "
                         << "'static'";
@@ -138,7 +156,8 @@ static std::shared_ptr<conf> load_config(const std::string &path) {
     return cf;
 }
 
-static bool configure(std::shared_ptr<conf> &cf) {
+static bool configure(std::shared_ptr<conf> &cf)
+{
     std::shared_ptr<conf> x_cf;
 
     std::list<std::shared_ptr<rule> > myrules;
@@ -147,10 +166,12 @@ static bool configure(std::shared_ptr<conf> &cf) {
 
     std::vector<std::shared_ptr<conf> > proxies(cf->find_all("proxy"));
 
-    for (p_it = proxies.begin(); p_it != proxies.end(); p_it++) {
+    for (p_it = proxies.begin(); p_it != proxies.end(); p_it++)
+    {
         std::shared_ptr<conf> pr_cf = *p_it;
 
-        if (pr_cf->empty()) {
+        if (pr_cf->empty())
+        {
             return false;
         }
 
@@ -161,7 +182,8 @@ static bool configure(std::shared_ptr<conf> &cf) {
             promiscuous = *x_cf;
 
         std::shared_ptr<proxy> pr = proxy::open(*pr_cf, promiscuous);
-        if (!pr) {
+        if (!pr)
+        {
             return false;
         }
 
@@ -204,7 +226,8 @@ static bool configure(std::shared_ptr<conf> &cf) {
 
         std::vector<std::shared_ptr<conf> > rules(pr_cf->find_all("rule"));
 
-        for (r_it = rules.begin(); r_it != rules.end(); r_it++) {
+        for (r_it = rules.begin(); r_it != rules.end(); r_it++)
+        {
             std::shared_ptr<conf> ru_cf = *r_it;
 
             Cidr addr(*ru_cf);
@@ -215,36 +238,45 @@ static bool configure(std::shared_ptr<conf> &cf) {
             else
                 autovia = *x_cf;
 
-            if (x_cf = ru_cf->find("iface")) {
+            if (x_cf = ru_cf->find("iface"))
+            {
                 std::shared_ptr<iface> ifa = iface::open_ifd(*x_cf);
-                if (!ifa) {
+                if (!ifa)
+                {
                     return false;
                 }
 
                 ifa->add_parent(pr);
 
                 myrules.push_back(pr->add_rule(addr, ifa, autovia));
-            } else if (ru_cf->find("auto")) {
+            }
+            else if (ru_cf->find("auto"))
+            {
                 myrules.push_back(pr->add_rule(addr, true));
-            } else {
+            }
+            else
+            {
                 myrules.push_back(pr->add_rule(addr, false));
             }
         }
     }
 
     // Print out all the topology    
-    for (auto &i_it : iface::_map) {
+    for (auto &i_it : iface::_map)
+    {
         std::shared_ptr<iface> ifa = i_it.second.lock();
 
         Logger::debug() << "iface " << ifa->name() << " {";
 
-        for (auto &weak_proxy : ifa->serves()) {
+        for (auto &weak_proxy : ifa->serves())
+        {
             std::shared_ptr<proxy> proxy = weak_proxy.lock();
             if (!proxy) continue;
 
             Logger::debug() << "  " << "proxy " << Logger::format("%x", proxy.get()) << " {";
 
-            for (auto &rule : proxy->rules()) {
+            for (auto &rule : proxy->rules())
+            {
                 Logger::debug() << "    " << "rule " << Logger::format("%x", rule.get()) << " {";
                 Logger::debug() << "      " << "taddr " << rule->cidr() << ";";
                 if (rule->is_auto())
@@ -260,7 +292,8 @@ static bool configure(std::shared_ptr<conf> &cf) {
         }
 
         Logger::debug() << "  " << "parents {";
-        for (auto &weak_proxy : ifa->parents()) {
+        for (auto &weak_proxy : ifa->parents())
+        {
             std::shared_ptr<proxy> proxy = weak_proxy.lock();
             Logger::debug() << "    " << "parent " << Logger::format("%x", proxy.get()) << ";";
         }
@@ -274,12 +307,14 @@ static bool configure(std::shared_ptr<conf> &cf) {
 
 static bool running = true;
 
-static void exit_ndppd(int sig) {
+static void exit_ndppd(int sig)
+{
     Logger::error() << "Shutting down...";
     running = 0;
 }
 
-int main(int argc, char *argv[], char *env[]) {
+int main(int argc, char *argv[], char *env[])
+{
     signal(SIGINT, exit_ndppd);
     signal(SIGTERM, exit_ndppd);
 
@@ -288,7 +323,8 @@ int main(int argc, char *argv[], char *env[]) {
     std::string verbosity;
     bool daemon = false;
 
-    for (;;) {
+    for (;;)
+    {
         int c, opt;
 
         static struct option long_options[] = {
@@ -303,7 +339,8 @@ int main(int argc, char *argv[], char *env[]) {
         if (c == -1)
             break;
 
-        switch (c) {
+        switch (c)
+        {
             case 'c':
                 config_path = optarg;
                 break;
@@ -337,14 +374,16 @@ int main(int argc, char *argv[], char *env[]) {
     if (!configure(cf))
         return -1;
 
-    if (daemon) {
+    if (daemon)
+    {
         Logger::syslog(true);
 
         if (daemonize() < 0)
             return 1;
     }
 
-    if (!pidfile.empty()) {
+    if (!pidfile.empty())
+    {
         std::ofstream pf;
         pf.open(pidfile.c_str(), std::ios::out | std::ios::trunc);
         pf << getpid() << std::endl;
@@ -359,11 +398,14 @@ int main(int argc, char *argv[], char *env[]) {
     Netlink::initialize();
     Netlink::load_local_ips();
 
-    while (running) {
+    while (running)
+    {
         Socket::poll();
 
-        if (iface::poll_all() < 0) {
-            if (running) {
+        if (iface::poll_all() < 0)
+        {
+            if (running)
+            {
                 Logger::error() << "iface::poll_all() failed";
             }
             break;

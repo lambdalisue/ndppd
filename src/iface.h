@@ -29,13 +29,15 @@
 #include "range.h"
 #include "address.h"
 
-namespace ndppd {
+namespace ndppd
+{
 
     class session;
 
     class proxy;
 
-    class iface {
+    class iface
+    {
     public:
         // Destructor.
         ~iface();

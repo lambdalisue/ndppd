@@ -29,33 +29,37 @@
 #include "cidr.h"
 #include "session.h"
 
-namespace ndppd {
+namespace ndppd
+{
     class iface;
+
     class rule;
 
-    class proxy {
+    class proxy
+    {
     public:
-        static std::shared_ptr<proxy> create(const std::shared_ptr<iface>& ifa, bool promiscuous);
+        static std::shared_ptr<proxy> create(const std::shared_ptr<iface> &ifa, bool promiscuous);
 
-        static std::shared_ptr<proxy> find_aunt(const std::string& ifname, const Address& taddr);
+        static std::shared_ptr<proxy> find_aunt(const std::string &ifname, const Address &taddr);
 
-        static std::shared_ptr<proxy> open(const std::string& ifn, bool promiscuous);
+        static std::shared_ptr<proxy> open(const std::string &ifn, bool promiscuous);
 
-        std::shared_ptr<session> find_or_create_session(const Address& taddr);
+        std::shared_ptr<session> find_or_create_session(const Address &taddr);
 
-        void handle_advert(const Address& saddr, const Address& taddr, const std::string& ifname, bool use_via);
+        void handle_advert(const Address &saddr, const Address &taddr, const std::string &ifname, bool use_via);
 
-        void handle_stateless_advert(const Address& saddr, const Address& taddr, const std::string& ifname, bool use_via);
+        void
+        handle_stateless_advert(const Address &saddr, const Address &taddr, const std::string &ifname, bool use_via);
 
-        void handle_solicit(const Address& saddr, const Address& taddr, const std::string& ifname);
+        void handle_solicit(const Address &saddr, const Address &taddr, const std::string &ifname);
 
-        void remove_session(const std::shared_ptr<session>& se);
+        void remove_session(const std::shared_ptr<session> &se);
 
-        std::shared_ptr<rule> add_rule(const Cidr& cidr, const std::shared_ptr<iface>& ifa, bool autovia);
+        std::shared_ptr<rule> add_rule(const Cidr &cidr, const std::shared_ptr<iface> &ifa, bool autovia);
 
-        std::shared_ptr<rule> add_rule(const Cidr& cidr, bool aut = false);
+        std::shared_ptr<rule> add_rule(const Cidr &cidr, bool aut = false);
 
-        const std::shared_ptr<iface>& ifa() const;
+        const std::shared_ptr<iface> &ifa() const;
 
         bool promiscuous() const;
 
