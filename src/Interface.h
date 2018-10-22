@@ -45,8 +45,6 @@ public:
 
     static std::shared_ptr<Interface> open_pfd(const std::string& name, bool promisc);
 
-    static int poll_all();
-
     // Writes a NB_NEIGHBOR_SOLICIT message to the _ifd socket.
     ssize_t write_solicit(const Address& taddr);
 
@@ -119,8 +117,6 @@ private:
 
     // Constructor.
     Interface();
-
-
 };
 
 NDPPD_NS_END
