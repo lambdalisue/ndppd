@@ -46,7 +46,7 @@ std::unique_ptr<Socket> Socket::create(int domain, int type, int protocol)
     return std::unique_ptr<Socket>(new Socket(domain, type, protocol));
 }
 
-void Socket::poll()
+bool Socket::poll_all()
 {
     int len;
 
@@ -62,7 +62,7 @@ void Socket::poll()
     }
 
     if ((len = ::poll(&pollfds[0], pollfds.size(), 50)) < 0)
-        throw std::system_error(errno, std::generic_category());
+        return false;
 
     for (auto it : pollfds) {
         if (it.revents & POLLIN) {
@@ -72,6 +72,8 @@ void Socket::poll()
                 (*s_it)->_handler(**s_it);
         }
     }
+
+    return true;
 }
 
 Socket::Socket(int domain, int type, int protocol)
@@ -91,52 +93,15 @@ Socket::~Socket()
     pollfds_dirty = true;
 }
 
-bool Socket::if_allmulti(const std::string& name, bool state) const
+void Socket::handler(SocketHandler handler, void* userdata)
 {
-    ifreq ifr {};
-
-    Logger::debug() << "Socket::if_allmulti() state=" << state << ", _name=\"" << name << "\"";
-
-    ::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ);
-
-    if (ioctl(_fd, SIOCGIFFLAGS, &ifr) < 0)
-        throw std::system_error(errno, std::generic_category(), "Socket::if_allmulti()");
-
-    bool old_state = (ifr.ifr_flags & IFF_ALLMULTI) != 0;
-
-    if (state == old_state)
-        return old_state;
-
-    ifr.ifr_flags = state ? (ifr.ifr_flags | IFF_ALLMULTI) : (ifr.ifr_flags & ~IFF_ALLMULTI);
-
-    if (ioctl(_fd, SIOCSIFFLAGS, &ifr) < 0)
-        throw std::system_error(errno, std::generic_category(), "Socket::if_allmulti()");
-
-    return old_state;
+    _handler = handler;
+    _userdata = userdata;
 }
 
-bool Socket::if_promisc(const std::string& name, bool state) const
+bool Socket::ioctl(unsigned long request, void* data) const
 {
-    ifreq ifr {};
-
-    Logger::debug() << "Socket::if_promisc() state=" << state << ", _name=\"" << name << "\"";
-
-    ::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ);
-
-    if (ioctl(_fd, SIOCGIFFLAGS, &ifr) < 0)
-        throw std::system_error(errno, std::generic_category(), "Socket::if_promisc()");
-
-    bool old_state = (ifr.ifr_flags & IFF_PROMISC) != 0;
-
-    if (state == old_state)
-        return old_state;
-
-    ifr.ifr_flags = state ? (ifr.ifr_flags | IFF_PROMISC) : (ifr.ifr_flags & ~IFF_PROMISC);
-
-    if (ioctl(_fd, SIOCSIFFLAGS, &ifr) < 0)
-        throw std::system_error(errno, std::generic_category(), "Socket::if_promisc()");
-
-    return old_state;
+    return ::ioctl(_fd, request, data) != -1;
 }
 
 NDPPD_NS_END

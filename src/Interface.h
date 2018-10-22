@@ -28,6 +28,7 @@
 #include "ndppd.h"
 #include "range.h"
 #include "address.h"
+#include "socket.h"
 
 NDPPD_NS_BEGIN
 
@@ -42,13 +43,9 @@ public:
 
     static std::shared_ptr<Interface> open_ifd(const std::string& name);
 
-    static std::shared_ptr<Interface> open_pfd(const std::string& name, bool promiscuous);
+    static std::shared_ptr<Interface> open_pfd(const std::string& name, bool promisc);
 
     static int poll_all();
-
-    ssize_t read(int fd, struct sockaddr* saddr, ssize_t saddr_size, uint8_t* msg, size_t size);
-
-    ssize_t write(int fd, const Address& daddr, const uint8_t* msg, size_t size);
 
     // Writes a NB_NEIGHBOR_SOLICIT message to the _ifd socket.
     ssize_t write_solicit(const Address& taddr);
@@ -82,33 +79,25 @@ public:
     const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> serves() const;
 
 private:
+    void icmp6_handler();
 
-    static bool _map_dirty;
-
-    // An array of objects used with ::poll.
-    static std::vector<struct pollfd> _pollfds;
-
-    // Updates the array above.
-    static void fixup_pollfds();
-
-    static void cleanup();
+    void packet_handler();
 
     // Weak pointer so this object can reference itself.
-    std::weak_ptr<Interface> _ptr;
+    std::weak_ptr<Interface> _self;
 
-    // The "generic" ICMPv6 socket for reading/writing NB_NEIGHBOR_ADVERT
-    // messages as well as writing NB_NEIGHBOR_SOLICIT messages.
-    int _ifd;
+    // The "generic" ICMPv6 socket for reading/writing NB_NEIGHBOR_ADVERT messages as well
+    // as writing NB_NEIGHBOR_SOLICIT messages.
+    std::unique_ptr<Socket> _icmp6_socket;
 
-    // This is the PF_PACKET socket we use in order to read
-    // NB_NEIGHBOR_SOLICIT messages.
-    int _pfd;
+    // This is the PF_PACKET socket we use in order to read NB_NEIGHBOR_SOLICIT messages.
+    std::unique_ptr<Socket> _packet_socket;
 
     // Previous state of ALLMULTI for the interface.
     int _prev_allmulti;
 
     // Previous state of PROMISC for the interface
-    int _prev_promiscuous;
+    int _prev_promisc;
 
     // Name of this interface.
     std::string _name;
@@ -122,11 +111,11 @@ private:
 
     // Turns on/off ALLMULTI for this interface - returns the previous state
     // or -1 if there was an error.
-    int allmulti(int state);
+    int allmulti(bool state = true);
 
     // Turns on/off PROMISC for this interface - returns the previous state
     // or -1 if there was an error
-    int promiscuous(int state);
+    int promisc(bool state = true);
 
     // Constructor.
     Interface();

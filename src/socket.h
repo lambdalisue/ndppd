@@ -21,13 +21,15 @@
 #include <cassert>
 #include <memory>
 #include <sys/socket.h>
+#include <functional>
 
 #include "ndppd.h"
+#include "logger.h"
 
 NDPPD_NS_BEGIN
 
 class Socket {
-    using SocketHandler = void (*)(Socket& socket);
+    using SocketHandler = std::function<void(Socket&)>;
 
 private:
     int _fd;
@@ -39,31 +41,27 @@ private:
 public:
     static std::unique_ptr<Socket> create(int domain, int type, int protocol);
 
-    static void poll();
+    void handler(SocketHandler handler, void* userdata = nullptr);
+
+    static bool poll_all();
 
     ~Socket();
 
-    bool if_allmulti(const std::string& name, bool state = true) const;
-
-    /*!
-     * Enable or disable PROMISC for the specified interface.
-     */
-    bool if_promisc(const std::string& name, bool state = true) const;
+    bool ioctl(unsigned long request, void *data) const;
 
     /*!
      *
      */
     template<typename T>
-    void bind(const T& sa) const
+    bool bind(const T& sa) const
     {
-        if ((::bind(_fd, (const sockaddr*) &sa, sizeof(T)))<0)
-            throw std::system_error(errno, std::generic_category());
+        return ::bind(_fd, (const sockaddr*) &sa, sizeof(T)) >= 0;
     }
 
     template<typename T>
     ssize_t recvmsg(T& sa, void* msg, size_t size, bool wait = false) const
     {
-        assert(msg!=nullptr);
+        assert(msg != nullptr);
         iovec iov = { msg, size };
         msghdr mhdr = { &sa, sizeof(sa), &iov, 1 };
         return ::recvmsg(_fd, &mhdr, wait ? 0 : MSG_DONTWAIT);
@@ -72,10 +70,15 @@ public:
     template<typename T>
     ssize_t sendmsg(const T& sa, const void* msg, size_t size, bool wait = true) const
     {
-        assert(msg!=nullptr);
+        assert(msg != nullptr);
         iovec iov = { (void*) msg, size };
         msghdr mhdr = { (void*) &sa, sizeof(sa), &iov, 1, nullptr, 0, 0 };
         return ::sendmsg(_fd, &mhdr, wait ? 0 : MSG_DONTWAIT);
+    }
+
+    template<typename T>
+    bool setsockopt(int level, int optname, const T& val) const {
+        return ::setsockopt(_fd, level, optname, &val, sizeof(val)) == 0;
     }
 };
 

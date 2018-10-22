@@ -362,12 +362,8 @@ int main(int argc, char* argv[], char* env[])
     Netlink::load_local_ips();
 
     while (running) {
-        Socket::poll();
-
-        if (Interface::poll_all() < 0) {
-            if (running) {
-                Logger::error() << "iface::poll_all() failed";
-            }
+        if (!Socket::poll_all()) {
+            Logger::error() << "Failed to poll";
             break;
         }
 
