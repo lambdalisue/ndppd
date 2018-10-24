@@ -59,7 +59,7 @@ static void handle_address(nlmsghdr* nlh)
 
 void Netlink::initialize()
 {
-    _socket = std::move(Socket::create(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE));
+    _socket = std::make_unique<Socket>(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
     _socket->bind((sockaddr_nl) { AF_NETLINK, 0, 0, RTMGRP_IPV6_ROUTE | RTMGRP_IPV6_IFADDR });
 }
 

@@ -35,14 +35,15 @@ class Proxy;
 
 class Rule {
 public:
-    static std::shared_ptr<Rule>
-    create(const std::shared_ptr<Proxy>& pr, const Cidr& cidr, const std::shared_ptr<Interface>& ifa);
+    bool autovia;
 
-    static std::shared_ptr<Rule> create(const std::shared_ptr<Proxy>& pr, const Cidr& cidr, bool stc = true);
+    Rule(Proxy& proxy, const Cidr& cidr, const std::shared_ptr<Interface>& ifa);
+
+    Rule(Proxy& proxy, const Cidr& cidr, bool stc = true);
 
     const Cidr& cidr() const;
 
-    std::shared_ptr<Interface> daughter() const;
+    const std::shared_ptr<Interface> &iface() const;
 
     bool is_auto() const;
 
@@ -54,16 +55,11 @@ public:
 
     static bool any_iface();
 
-    bool autovia() const;
-
-    void autovia(bool val);
-
 private:
-    std::weak_ptr<Rule> _ptr;
+    Proxy& _proxy;
 
-    std::weak_ptr<Proxy> _pr;
-
-    std::shared_ptr<Interface> _daughter;
+    // Interface for querying internal network.
+    std::shared_ptr<Interface> _iface;
 
     Cidr _cidr;
 
@@ -76,8 +72,6 @@ private:
     static bool _any_iface;
 
     bool _autovia;
-
-    Rule();
 };
 
 NDPPD_NS_END

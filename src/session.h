@@ -30,41 +30,6 @@ class Proxy;
 class Interface;
 
 class Session {
-private:
-    std::weak_ptr<Session> _ptr;
-
-    std::weak_ptr<Proxy> _pr;
-
-    Address _saddr, _daddr, _taddr;
-
-    bool _autowire;
-
-    bool _keepalive;
-
-    bool _wired;
-
-    Address _wired_via;
-
-    bool _touched;
-
-    // An array of interfaces this session is monitoring for
-    // ND_NEIGHBOR_ADVERT on.
-    std::list<std::shared_ptr<Interface> > _ifaces;
-
-    std::set<Address> _pending;
-
-    // The remaining time in miliseconds the object will stay in the
-    // interface's session array or cache.
-    int _ttl;
-
-    int _fails;
-
-    int _retries;
-
-    int _status;
-
-    static std::list<std::weak_ptr<Session> > _sessions;
-
 public:
     enum {
         WAITING,  // Waiting for an advert response.
@@ -75,11 +40,9 @@ public:
 
     static void update_all(int elapsed_time);
 
-    // Destructor.
-    ~Session();
+    Session(Proxy& proxy, const Address& taddr, bool autowire, bool keepalive, int retries);
 
-    static std::shared_ptr<Session>
-    create(const std::shared_ptr<Proxy>& pr, const Address& taddr, bool autowire, bool keepalive, int retries);
+    ~Session();
 
     void add_iface(const std::shared_ptr<Interface>& ifa);
 
@@ -118,6 +81,38 @@ public:
     void send_solicit();
 
     void refesh();
+
+private:
+    Proxy& _proxy;
+
+    Address _saddr, _daddr, _taddr;
+
+    bool _autowire;
+
+    bool _keepalive;
+
+    bool _wired;
+
+    Address _wired_via;
+
+    bool _touched;
+
+    // An array of interfaces this session is monitoring for
+    // ND_NEIGHBOR_ADVERT on.
+    std::list<std::shared_ptr<Interface> > _ifaces;
+
+    std::set<Address> _pending;
+
+    // The remaining time in miliseconds the object will stay in the
+    // interface's session array or cache.
+    int _ttl;
+
+    int _fails;
+
+    int _retries;
+
+    int _status;
+
 };
 
 NDPPD_NS_END

@@ -1,3 +1,5 @@
+#include <utility>
+
 // ndppd - NDP Proxy Daemon
 // Copyright (C) 2011-2018  Daniel Adolfsson <daniel@priv.nu>
 //
@@ -37,19 +39,14 @@
 
 NDPPD_NS_BEGIN
 
-static bool pollfds_dirty;
-static std::vector<pollfd> pollfds;
-static std::set<Socket*> sockets;
-
-std::unique_ptr<Socket> Socket::create(int domain, int type, int protocol)
-{
-    return std::unique_ptr<Socket>(new Socket(domain, type, protocol));
+namespace {
+bool pollfds_dirty;
+std::vector<pollfd> pollfds;
+std::set<Socket*> sockets;
 }
 
 bool Socket::poll_all()
 {
-    int len;
-
     if (pollfds_dirty) {
         pollfds.resize(sockets.size());
 
@@ -61,7 +58,7 @@ bool Socket::poll_all()
         pollfds_dirty = false;
     }
 
-    if ((len = ::poll(&pollfds[0], pollfds.size(), 50)) < 0)
+    if (::poll(&pollfds[0], pollfds.size(), 50) < 0)
         return false;
 
     for (auto it : pollfds) {
@@ -79,7 +76,6 @@ bool Socket::poll_all()
 Socket::Socket(int domain, int type, int protocol)
         : _handler(nullptr)
 {
-    // Create the socket.
     if ((_fd = ::socket(domain, type, protocol)) < 0)
         throw std::system_error(errno, std::generic_category());
     sockets.insert(this);
@@ -95,7 +91,7 @@ Socket::~Socket()
 
 void Socket::handler(SocketHandler handler, void* userdata)
 {
-    _handler = handler;
+    _handler = std::move(handler);
     _userdata = userdata;
 }
 

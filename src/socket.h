@@ -36,22 +36,17 @@ private:
     void* _userdata;
     SocketHandler _handler;
 
-    Socket(int domain, int type, int protocol);
-
 public:
-    static std::unique_ptr<Socket> create(int domain, int type, int protocol);
-
-    void handler(SocketHandler handler, void* userdata = nullptr);
-
     static bool poll_all();
+
+    Socket(int domain, int type, int protocol);
 
     ~Socket();
 
-    bool ioctl(unsigned long request, void *data) const;
+    void handler(SocketHandler handler, void* userdata = nullptr);
 
-    /*!
-     *
-     */
+    bool ioctl(unsigned long request, void* data) const;
+
     template<typename T>
     bool bind(const T& sa) const
     {
@@ -77,7 +72,8 @@ public:
     }
 
     template<typename T>
-    bool setsockopt(int level, int optname, const T& val) const {
+    bool setsockopt(int level, int optname, const T& val) const
+    {
         return ::setsockopt(_fd, level, optname, &val, sizeof(val)) == 0;
     }
 };

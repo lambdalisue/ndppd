@@ -24,77 +24,70 @@
 
 NDPPD_NS_BEGIN
 
-std::list<std::weak_ptr<Session> > Session::_sessions;
+namespace {
+std::list<Session*> all_sessions;
+}
 
 void Session::update_all(int elapsed_time)
 {
-    for (auto it = _sessions.begin(); it != _sessions.end();) {
-        auto session = it->lock();
+    for (auto it = all_sessions.begin(); it != all_sessions.end();) {
+        auto& session = **it++;
 
-        if (!session) {
-            _sessions.erase(it++);
-            continue;
-        }
-
-        it++;
-
-        if ((session->_ttl -= elapsed_time) >= 0)
+        if ((session._ttl -= elapsed_time) >= 0)
             continue;
 
-        auto pr = session->_pr.lock();
-
-        switch (session->_status) {
+        switch (session._status) {
 
         case Session::WAITING:
-            if (session->_fails < session->_retries) {
-                Logger::debug() << "session will keep trying [taddr=" << session->_taddr << "]";
+            if (session._fails < session._retries) {
+                Logger::debug() << "session will keep trying [taddr=" << session._taddr << "]";
 
-                session->_ttl = session->_pr.lock()->timeout();
-                session->_fails++;
+                session._ttl = session._proxy.timeout;
+                session._fails++;
 
                 // Send another solicit
-                session->send_solicit();
+                session.send_solicit();
             }
             else {
 
-                Logger::debug() << "session is now invalid [taddr=" << session->_taddr << "]";
+                Logger::debug() << "session is now invalid [taddr=" << session._taddr << "]";
 
-                session->_status = Session::INVALID;
-                session->_ttl = pr->deadtime();
+                session._status = Session::INVALID;
+                session._ttl = session._proxy.timeout;
             }
             break;
 
         case Session::RENEWING:
-            Logger::debug() << "session is became invalid [taddr=" << session->_taddr << "]";
+            Logger::debug() << "session is became invalid [taddr=" << session._taddr << "]";
 
-            if (session->_fails < session->_retries) {
-                session->_ttl = pr->timeout();
-                session->_fails++;
+            if (session._fails < session._retries) {
+                session._ttl = session._proxy.timeout;
+                session._fails++;
 
                 // Send another solicit
-                session->send_solicit();
+                session.send_solicit();
             }
             else
-                pr->remove_session(session);
+                session._proxy.remove_session(session);
             break;
 
         case Session::VALID:
-            if (session->touched() || session->keepalive()) {
-                Logger::debug() << "session is renewing [taddr=" << session->_taddr << "]";
-                session->_status = Session::RENEWING;
-                session->_ttl = pr->timeout();
-                session->_fails = 0;
-                session->_touched = false;
+            if (session.touched() || session.keepalive()) {
+                Logger::debug() << "session is renewing [taddr=" << session._taddr << "]";
+                session._status = Session::RENEWING;
+                session._ttl = session._proxy.timeout;
+                session._fails = 0;
+                session._touched = false;
 
                 // Send another solicit to make sure the route is still valid
-                session->send_solicit();
+                session.send_solicit();
             }
             else
-                pr->remove_session(session);
+                session._proxy.remove_session(session);
             break;
 
         default:
-            pr->remove_session(session);
+            session._proxy.remove_session(session);
         }
     }
 }
@@ -110,28 +103,13 @@ Session::~Session()
     }
 }
 
-std::shared_ptr<Session>
-Session::create(const std::shared_ptr<Proxy>& pr, const Address& taddr, bool auto_wire, bool keepalive, int retries)
+Session::Session(Proxy& proxy, const Address& taddr, bool autowire, bool keepalive, int retries)
+        : _proxy(proxy), _taddr(taddr), _autowire(autowire), _keepalive(keepalive), _retries(retries),
+          _ttl(proxy.ttl), _wired(false), _touched(false)
 {
-    std::shared_ptr<Session> session(new Session());
-
-    session->_ptr = session;
-    session->_pr = pr;
-    session->_taddr = taddr;
-    session->_autowire = auto_wire;
-    session->_keepalive = keepalive;
-    session->_retries = retries;
-    session->_wired = false;
-    session->_ttl = pr->ttl();
-    session->_touched = false;
-
-    _sessions.push_back(session);
-
-    Logger::debug() << "session::create() pr=" << Logger::format("%x", (Proxy*) pr.get())
-                    << ", proxy=" << ((pr->ifa()) ? pr->ifa()->name() : "null")
-                    << ", taddr=" << taddr << " =" << Logger::format("%x", (Session*) session.get());
-
-    return session;
+    Logger::debug() << "session::create() pr=" << Logger::format("%x", &proxy)
+                    << ", proxy=" << (proxy.ifa() ? proxy.ifa()->name() : "null")
+                    << ", taddr=" << taddr << " =" << Logger::format("%x", this);
 }
 
 void Session::add_iface(const std::shared_ptr<Interface>& ifa)
@@ -163,7 +141,7 @@ void Session::touch()
         _touched = true;
 
         if (status() == Session::WAITING || status() == Session::INVALID) {
-            _ttl = _pr.lock()->timeout();
+            _ttl = _proxy.timeout;
             Logger::debug() << "session is now probing [taddr=" << _taddr << "]";
             send_solicit();
         }
@@ -172,8 +150,7 @@ void Session::touch()
 
 void Session::send_advert(const Address& daddr)
 {
-    auto pr = _pr.lock();
-    pr->ifa()->write_advert(daddr, _taddr, pr->router());
+    _proxy.ifa()->write_advert(daddr, _taddr, _proxy.router);
 }
 
 void Session::handle_advert(const Address& saddr, const std::string& ifname, bool use_via)
@@ -187,20 +164,18 @@ void Session::handle_advert(const Address& saddr, const std::string& ifname, boo
 
 void Session::handle_advert()
 {
-    auto pr = _pr.lock();
-
-    Logger::debug() << "session::handle_advert() taddr=" << _taddr << ", ttl=" << pr->ttl();
+    Logger::debug() << "session::handle_advert() taddr=" << _taddr << ", ttl=" << _proxy.ttl;
 
     if (_status != VALID) {
         _status = VALID;
         Logger::debug() << "session is active [taddr=" << _taddr << "]";
     }
 
-    _ttl = pr->ttl();
+    _ttl = _proxy.ttl;
     _fails = 0;
 
     if (!_pending.empty()) {
-        for (auto& address : _pending) {
+        for (const auto& address : _pending) {
             Logger::debug() << " - forward to " << address;
             send_advert(address);
         }

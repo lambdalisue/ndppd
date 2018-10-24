@@ -17,31 +17,38 @@
 #ifndef NDPPD_RANGE_H
 #define NDPPD_RANGE_H
 
+#include <algorithm>
 #include "ndppd.h"
 
 NDPPD_NS_BEGIN
 
-template<typename _Tp>
+template<typename _IIter>
 class Range {
 private:
-    _Tp _begin;
-    _Tp _end;
+    _IIter _begin;
+    _IIter _end;
 
 public:
-    Range(_Tp begin, _Tp end)
+    Range(_IIter begin, _IIter end)
     {
         _begin = begin;
         _end = end;
     }
 
-    _Tp begin() const
+    _IIter begin() const
     {
         return _begin;
     }
 
-    _Tp end() const
+    _IIter end() const
     {
         return _end;
+    }
+
+    template<typename _Predicate>
+    _IIter find_if(_Predicate predicate) const
+    {
+        return std::find_if(_begin, _end, predicate);
     }
 };
 

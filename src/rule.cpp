@@ -32,53 +32,23 @@ bool Rule::_any_iface = false;
 
 bool Rule::_any_static = false;
 
-Rule::Rule()
+Rule::Rule(Proxy& proxy, const Cidr& cidr, const std::shared_ptr<Interface>& iface)
+        : _proxy(proxy), _cidr(cidr), _iface(iface), _aut(false)
 {
-}
-
-std::shared_ptr<Rule>
-Rule::create(const std::shared_ptr<Proxy>& pr, const Cidr& cidr, const std::shared_ptr<Interface>& ifa)
-{
-    std::shared_ptr<Rule> rule(new Rule());
-    rule->_ptr = rule;
-    rule->_pr = pr;
-    rule->_daughter = ifa;
-    rule->_cidr = cidr;
-    rule->_aut = false;
     _any_iface = true;
-    unsigned int ifindex;
-
-    ifindex = if_nametoindex(pr->ifa()->name().c_str());
-#ifdef WITH_ND_NETLINK
-    if_add_to_list(ifindex, pr->ifa());
-#endif
-    ifindex = if_nametoindex(ifa->name().c_str());
-#ifdef WITH_ND_NETLINK
-    if_add_to_list(ifindex, ifa);
-#endif
-
-    Logger::debug() << "rule::create() if=" << pr->ifa()->name() << ", slave=" << ifa->name() << ", cidr=" << cidr;
-
-    return rule;
+    Logger::debug() << "Rule::Rule() if=" << proxy.ifa()->name() << ", slave=" << iface->name() << ", cidr=" << cidr;
 }
 
-std::shared_ptr<Rule> Rule::create(const std::shared_ptr<Proxy>& pr, const Cidr& cidr, bool aut)
+Rule::Rule(Proxy& proxy, const Cidr& cidr, bool aut)
+        : _proxy(proxy), _cidr(cidr), _iface {}, _aut(aut)
 {
-    std::shared_ptr<Rule> rule(new Rule());
-    rule->_ptr = rule;
-    rule->_pr = pr;
-    rule->_cidr = cidr;
-    rule->_aut = aut;
-    _any_aut = _any_aut || aut;
-
-    if (!aut)
+    if (_aut)
+        _any_aut = true;
+    else
         _any_static = true;
 
-    Logger::debug()
-            << "rule::create() if=" << pr->ifa()->name().c_str() << ", cidr=" << cidr
-            << ", auto=" << (aut ? "yes" : "no");
-
-    return rule;
+    Logger::debug() << "Rule::Rule() if=" << proxy.ifa()->name() << ", cidr=" << cidr
+                    << ", auto=" << (aut ? "yes" : "no");
 }
 
 const Cidr& Rule::cidr() const
@@ -86,24 +56,14 @@ const Cidr& Rule::cidr() const
     return _cidr;
 }
 
-std::shared_ptr<ndppd::Interface> Rule::daughter() const
+const std::shared_ptr<ndppd::Interface>& Rule::iface() const
 {
-    return _daughter;
+    return _iface;
 }
 
 bool Rule::is_auto() const
 {
     return _aut;
-}
-
-bool Rule::autovia() const
-{
-    return _autovia;
-}
-
-void Rule::autovia(bool val)
-{
-    _autovia = val;
 }
 
 bool Rule::any_auto()

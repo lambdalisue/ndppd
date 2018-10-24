@@ -38,6 +38,8 @@ class Proxy;
 
 class Interface {
 public:
+    Interface();
+
     // Destructor.
     ~Interface();
 
@@ -66,15 +68,15 @@ public:
     // Returns the name of the interface.
     const std::string& name() const;
 
-    void add_serves(const std::shared_ptr<Proxy>& proxy);
+    void add_serves(Proxy& proxy);
 
-    void add_parent(const std::shared_ptr<Proxy>& parent);
+    void add_parent(Proxy& parent);
 
     static std::map<std::string, std::weak_ptr<Interface> > _map;
 
-    const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> parents() const;
+    const Range<std::list<std::reference_wrapper<Proxy>>::const_iterator> parents() const;
 
-    const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> serves() const;
+    const Range<std::list<std::reference_wrapper<Proxy>>::const_iterator> serves() const;
 
 private:
     void icmp6_handler();
@@ -100,12 +102,14 @@ private:
     // Name of this interface.
     std::string _name;
 
-    std::list<std::weak_ptr<Proxy> > _serves;
+    // List of proxies that will respond to neighbor solicitation messages.
+    std::list<std::reference_wrapper<Proxy>> _serves;
 
-    std::list<std::weak_ptr<Proxy> > _parents;
+    // List of proxies that accepts neighbor advertisement messages in order to forward them.
+    std::list<std::reference_wrapper<Proxy>> _parents;
 
     // The link-layer address of this interface.
-    struct ether_addr hwaddr;
+    ether_addr hwaddr;
 
     // Turns on/off ALLMULTI for this interface - returns the previous state
     // or -1 if there was an error.
@@ -114,9 +118,6 @@ private:
     // Turns on/off PROMISC for this interface - returns the previous state
     // or -1 if there was an error
     int promisc(bool state = true);
-
-    // Constructor.
-    Interface();
 };
 
 NDPPD_NS_END

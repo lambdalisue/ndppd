@@ -37,85 +37,47 @@ class Rule;
 
 class Proxy {
 public:
-    static std::shared_ptr<Proxy> create(const std::shared_ptr<Interface>& ifa, bool promiscuous);
+    // Act as a router.
+    bool router;
+    bool autowire;
+    int retries;
+    bool keepalive;
+    int ttl;
+    int deadtime;
+    int timeout;
 
-    static std::shared_ptr<Proxy> find_aunt(const std::string& ifname, const Address& taddr);
+    static Proxy& create(const std::string& ifname, bool promiscuous);
 
-    static std::shared_ptr<Proxy> open(const std::string& ifn, bool promiscuous);
+    Proxy(const std::shared_ptr<Interface>& iface, bool promisc);
 
-    std::shared_ptr<Session> find_or_create_session(const Address& taddr);
+    Session* find_or_create_session(const Address& taddr);
 
     void handle_advert(const Address& saddr, const Address& taddr, const std::string& ifname, bool use_via);
 
-    void
-    handle_stateless_advert(const Address& saddr, const Address& taddr, const std::string& ifname, bool use_via);
+    void handle_stateless_advert(const Address& saddr, const Address& taddr, const std::string& ifname, bool use_via);
 
     void handle_solicit(const Address& saddr, const Address& taddr, const std::string& ifname);
 
-    void remove_session(const std::shared_ptr<Session>& session);
+    void remove_session(Session& session);
 
-    std::shared_ptr<Rule> add_rule(const Cidr& cidr, const std::shared_ptr<Interface>& ifa, bool autovia);
+    Rule& add_rule(const Cidr& cidr, const std::shared_ptr<Interface>& iface, bool autovia);
 
-    std::shared_ptr<Rule> add_rule(const Cidr& cidr, bool aut = false);
+    Rule& add_rule(const Cidr& cidr, bool aut = false);
 
     const std::shared_ptr<Interface>& ifa() const;
 
     bool promiscuous() const;
 
-    bool router() const;
-
-    void router(bool val);
-
-    bool autowire() const;
-
-    void autowire(bool val);
-
-    int retries() const;
-
-    void retries(int val);
-
-    bool keepalive() const;
-
-    void keepalive(bool val);
-
-    int timeout() const;
-
-    void timeout(int val);
-
-    int ttl() const;
-
-    void ttl(int val);
-
-    int deadtime() const;
-
-    void deadtime(int val);
-
-    const Range<std::list<std::shared_ptr<Rule> >::const_iterator> rules() const;
+    const Range<std::list<std::unique_ptr<Rule> >::const_iterator> rules() const;
 
 private:
-    static std::list<std::shared_ptr<Proxy> > _list;
+    std::shared_ptr<Interface> _iface;
 
-    std::weak_ptr<Proxy> _ptr;
+    std::list<std::unique_ptr<Rule> > _rules;
 
-    std::shared_ptr<Interface> _ifa;
-
-    std::list<std::shared_ptr<Rule> > _rules;
-
-    std::list<std::shared_ptr<Session> > _sessions;
+    std::list<std::unique_ptr<Session> > _sessions;
 
     bool _promiscuous;
-
-    bool _router;
-
-    bool _autowire;
-
-    int _retries;
-
-    bool _keepalive;
-
-    int _ttl, _deadtime, _timeout;
-
-    Proxy();
 };
 
 NDPPD_NS_END

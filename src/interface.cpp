@@ -34,6 +34,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <algorithm>
 
 #include "ndppd.h"
 #include "interface.h"
@@ -79,10 +80,7 @@ std::shared_ptr<Interface> Interface::open_pfd(const std::string& name, bool pro
     if (!iface)
         return {};
 
-    auto socket = Socket::create(PF_PACKET, SOCK_RAW, htons(ETH_P_IPV6));
-
-    if (!socket)
-        return {};
+    auto socket = std::make_unique<Socket>(PF_PACKET, SOCK_RAW, htons(ETH_P_IPV6));
 
     sockaddr_ll lladdr {};
     lladdr.sll_family = AF_PACKET;
@@ -150,7 +148,7 @@ std::shared_ptr<Interface> Interface::open_ifd(const std::string& name)
 
     assert(!iface);
 
-    auto socket = Socket::create(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+    auto socket = std::make_unique<Socket>(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 
     if (!socket) {
         Logger::error() << "Unable to create socket";
@@ -343,14 +341,10 @@ bool Interface::handle_local(const Address& saddr, const Address& taddr)
 {
     for (const Address& adddress : Netlink::local_addresses()) {
         // Loop through all the serves that are using this iface to respond to NDP solicitation requests
-        for (auto& weak_proxy : serves()) {
-            auto proxy = weak_proxy.lock();
+        for (Proxy& proxy : _serves) {
+            for (const auto& rule : proxy.rules()) {
 
-            if (!proxy)
-                continue;
-
-            for (const auto& rule : proxy->rules()) {
-
+                // TODO
                 //if (ru->daughter() && ru->daughter()->name() == (*ad)->ifname())
                 {
                     Logger::debug() << "proxy::handle_solicit() found local taddr=" << taddr;
@@ -372,18 +366,17 @@ void Interface::handle_reverse_advert(const Address& saddr, const std::string& i
     Logger::debug() << "proxy::handle_reverse_advert()";
 
     // Loop through all the parents that forward new NDP soliciation requests to this interface
-    for (auto& weak_proxy : parents()) {
-        std::shared_ptr<Proxy> proxy = weak_proxy.lock();
-        if (!proxy || !proxy->ifa())
+    for (Proxy& proxy : _parents) {
+        if (!!proxy.ifa())
             continue;
 
         // Setup the reverse path on any proxies that are dealing
         // with the reverse direction (this helps improve connectivity and
         // latency in a full duplex setup)
-        for (auto& rule : proxy->rules()) {
-            if (rule->cidr() % saddr && rule->daughter()->name() == ifname) {
+        for (auto& rule : proxy.rules()) {
+            if (rule->cidr() % saddr && rule->iface()->name() == ifname) {
                 Logger::debug() << " - generating artifical advertisement: " << ifname;
-                proxy->handle_stateless_advert(saddr, saddr, ifname, rule->autovia());
+                proxy.handle_stateless_advert(saddr, saddr, ifname, rule->autovia);
             }
         }
     }
@@ -394,10 +387,8 @@ void Interface::packet_handler()
     for (;;) {
         Address saddr, daddr, taddr;
 
-        if (read_solicit(saddr, daddr, taddr) < 0) {
-            // TODO: If errno != EAGAIN we should probably do something.
+        if (read_solicit(saddr, daddr, taddr) < 0)
             break;
-        }
 
         // Process any local addresses for interfaces that we are proxying
         if (handle_local(saddr, taddr))
@@ -412,16 +403,11 @@ void Interface::packet_handler()
         // Loop through all the proxies that are using this iface to respond to NDP solicitation requests
         auto handled = false;
 
-        for (auto& weak_proxy : _serves) {
-            auto proxy = weak_proxy.lock();
-
-            if (!proxy)
-                continue;
-
+        for (Proxy& proxy : _serves) {
             // Process the solicitation request by relating it to other
             // interfaces or lookup up any statics routes we have configured
             handled = true;
-            proxy->handle_solicit(saddr, taddr, _name);
+            proxy.handle_solicit(saddr, taddr, _name);
         }
 
         // If it was not handled then write an error message
@@ -435,38 +421,36 @@ void Interface::icmp6_handler()
     for (;;) {
         Address saddr, taddr;
 
-        if (read_advert(saddr, taddr) < 0) {
-            // TODO: If errno != EAGAIN we should probably do something.
+        if (read_advert(saddr, taddr) < 0)
             break;
-        }
 
         bool handled = false;
 
-        for (auto& weak_proxy : _parents) {
-            std::shared_ptr<Proxy> proxy = weak_proxy.lock();
-            if (!proxy || !proxy->ifa())
-                continue;
+        for (Proxy& proxy : _parents) {
+            if (!proxy.ifa())
+                return;
 
             // The proxy must have a rule for this interface or it is not meant to receive
             // any notifications and thus they must be ignored
             bool autovia = false;
             bool is_relevant = false;
 
-            for (auto& rule : proxy->rules()) {
-                if (rule->cidr() % taddr && rule->daughter() && rule->daughter()->name() == _name) {
+            for (const auto& rule : proxy.rules()) {
+                if (rule->cidr() % taddr && rule->iface() && rule->iface()->name() == _name) {
                     is_relevant = true;
-                    autovia = rule->autovia();
+                    autovia = rule->autovia;
                     break;
                 }
             }
+
             if (!is_relevant) {
-                Logger::debug() << "iface::read_advert() advert is not for " << _name << "...skipping";
+                Logger::debug() << "Interface::read_advert() advert is not for " << _name << "...skipping";
                 continue;
             }
 
             // Process the NDP advertisement
             handled = true;
-            proxy->handle_advert(saddr, taddr, _name, autovia);
+            proxy.handle_advert(saddr, taddr, _name, autovia);
         }
 
         // If it was not handled then write an error message
@@ -541,22 +525,22 @@ const std::string& Interface::name() const
     return _name;
 }
 
-void Interface::add_serves(const std::shared_ptr<Proxy>& pr)
+void Interface::add_serves(Proxy& proxy)
 {
-    _serves.push_back(pr);
+    _serves.push_back(std::ref(proxy));
 }
 
-void Interface::add_parent(const std::shared_ptr<Proxy>& pr)
+void Interface::add_parent(Proxy& proxy)
 {
-    _parents.push_back(pr);
+    _parents.push_back(std::ref(proxy));
 }
 
-const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> Interface::parents() const
+const Range<std::list<std::reference_wrapper<Proxy>>::const_iterator> Interface::parents() const
 {
     return { _parents.cbegin(), _parents.cend() };
 }
 
-const Range<std::list<std::weak_ptr<Proxy>>::const_iterator> Interface::serves() const
+const Range<std::list<std::reference_wrapper<Proxy>>::const_iterator> Interface::serves() const
 {
     return { _serves.cbegin(), _serves.cend() };
 }

@@ -143,8 +143,6 @@ static bool configure(std::shared_ptr<conf>& cf)
 {
     std::shared_ptr<conf> x_cf;
 
-    std::list<std::shared_ptr<Rule> > myrules;
-
     std::vector<std::shared_ptr<conf> >::const_iterator p_it;
 
     std::vector<std::shared_ptr<conf> > proxies(cf->find_all("proxy"));
@@ -161,45 +159,30 @@ static bool configure(std::shared_ptr<conf>& cf)
         else
             promiscuous = *x_cf;
 
-        std::shared_ptr<Proxy> pr = Proxy::open(*pr_cf, promiscuous);
-        if (!pr) {
-            return false;
-        }
+        Proxy& proxy = Proxy::create(*pr_cf, promiscuous);
 
-        if (!(x_cf = pr_cf->find("router")))
-            pr->router(true);
-        else
-            pr->router(*x_cf);
+        if ((x_cf = pr_cf->find("router")))
+            proxy.router = *x_cf;
 
-        if (!(x_cf = pr_cf->find("autowire")))
-            pr->autowire(false);
-        else
-            pr->autowire(*x_cf);
+        if ((x_cf = pr_cf->find("autowire")))
+            proxy.autowire = *x_cf;
 
-        if (!(x_cf = pr_cf->find("keepalive")))
-            pr->keepalive(true);
-        else
-            pr->keepalive(*x_cf);
+        if ((x_cf = pr_cf->find("keepalive")))
+            proxy.keepalive = *x_cf;
 
-        if (!(x_cf = pr_cf->find("retries")))
-            pr->retries(3);
-        else
-            pr->retries(*x_cf);
+        if ((x_cf = pr_cf->find("retries")))
+            proxy.retries = *x_cf;
 
-        if (!(x_cf = pr_cf->find("ttl")))
-            pr->ttl(30000);
-        else
-            pr->ttl(*x_cf);
+        if ((x_cf = pr_cf->find("ttl")))
+            proxy.ttl = *x_cf;
 
         if (!(x_cf = pr_cf->find("deadtime")))
-            pr->deadtime(pr->ttl());
+            proxy.deadtime = proxy.ttl;
         else
-            pr->deadtime(*x_cf);
+            proxy.deadtime = *x_cf;
 
         if (!(x_cf = pr_cf->find("timeout")))
-            pr->timeout(500);
-        else
-            pr->timeout(*x_cf);
+            proxy.timeout = *x_cf;
 
         std::vector<std::shared_ptr<conf> >::const_iterator r_it;
 
@@ -221,14 +204,13 @@ static bool configure(std::shared_ptr<conf>& cf)
                 if (!ifa)
                     return false;
 
-                ifa->add_parent(pr);
-
-                myrules.push_back(pr->add_rule(addr, ifa, autovia));
+                ifa->add_parent(proxy);
+                proxy.add_rule(addr, ifa, autovia);
             }
             else if (ru_cf->find("auto"))
-                myrules.push_back(pr->add_rule(addr, true));
+                proxy.add_rule(addr, true);
             else
-                myrules.push_back(pr->add_rule(addr, false));
+                proxy.add_rule(addr, false);
         }
     }
 
@@ -238,21 +220,18 @@ static bool configure(std::shared_ptr<conf>& cf)
 
         Logger::debug() << "iface " << ifa->name() << " {";
 
-        for (auto& weak_proxy : ifa->serves()) {
-            std::shared_ptr<Proxy> proxy = weak_proxy.lock();
-            if (!proxy) continue;
+        for (Proxy& proxy : ifa->serves()) {
+            Logger::debug() << "  " << "proxy " << Logger::format("%x", &proxy) << " {";
 
-            Logger::debug() << "  " << "proxy " << Logger::format("%x", proxy.get()) << " {";
-
-            for (auto& rule : proxy->rules()) {
+            for (auto& rule : proxy.rules()) {
                 Logger::debug() << "    " << "rule " << Logger::format("%x", rule.get()) << " {";
                 Logger::debug() << "      " << "taddr " << rule->cidr() << ";";
                 if (rule->is_auto())
                     Logger::debug() << "      " << "auto;";
-                else if (!rule->daughter())
+                else if (!rule->iface())
                     Logger::debug() << "      " << "static;";
                 else
-                    Logger::debug() << "      " << "iface " << rule->daughter()->name() << ";";
+                    Logger::debug() << "      " << "iface " << rule->iface()->name() << ";";
                 Logger::debug() << "    }";
             }
 
@@ -260,10 +239,8 @@ static bool configure(std::shared_ptr<conf>& cf)
         }
 
         Logger::debug() << "  " << "parents {";
-        for (auto& weak_proxy : ifa->parents()) {
-            std::shared_ptr<Proxy> proxy = weak_proxy.lock();
-            Logger::debug() << "    " << "parent " << Logger::format("%x", proxy.get()) << ";";
-        }
+        for (Proxy& proxy : ifa->parents())
+            Logger::debug() << "    " << "parent " << Logger::format("%x", &proxy) << ";";
 
         Logger::debug() << "  }";
         Logger::debug() << "}";
