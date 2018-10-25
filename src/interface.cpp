@@ -112,7 +112,7 @@ void Interface::ensure_packet_socket(bool promisc)
     ensure_icmp6_socket();
 
     auto socket = std::make_unique<Socket>(PF_PACKET, SOCK_RAW, htons(ETH_P_IPV6));
-    socket->handler(std::bind(&Interface::packet_handler, this, std::placeholders::_1));
+    socket->handler = std::bind(&Interface::packet_handler, this, std::placeholders::_1);
     socket->bind((sockaddr_ll) { AF_PACKET, htons(ETH_P_IPV6), _index });
 
     // Set up filter.
@@ -155,7 +155,7 @@ void Interface::ensure_icmp6_socket()
         return;
 
     auto socket = std::make_unique<Socket>(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
-    socket->handler(std::bind(&Interface::icmp6_handler, this, std::placeholders::_1));
+    socket->handler = std::bind(&Interface::icmp6_handler, this, std::placeholders::_1);
 
     // Bind to the specified interface.
 
@@ -173,7 +173,7 @@ void Interface::ensure_icmp6_socket()
 
     socket->ioctl(SIOCGIFHWADDR, &ifr);
 
-    Logger::debug() << "hwaddr=" << ether_ntoa((const struct ether_addr*) &ifr.ifr_hwaddr.sa_data);
+    Logger::debug() << "hwaddr=" << ether_ntoa(reinterpret_cast<ether_addr*>(&ifr.ifr_hwaddr.sa_data));
 
     // Set max hops.
 
@@ -204,8 +204,8 @@ ssize_t Interface::read_solicit(Address& saddr, Address& daddr, Address& taddr)
         return -1;
     }
 
-    auto& ip6h = *(ip6_hdr*) (msg + ETH_HLEN);
-    auto& ns = *(nd_neighbor_solicit*) (msg + ETH_HLEN + sizeof(ip6_hdr));
+    auto& ip6h = *reinterpret_cast<ip6_hdr*>(msg + ETH_HLEN);
+    auto& ns = *reinterpret_cast<nd_neighbor_solicit*>(msg + ETH_HLEN + sizeof(ip6_hdr));
 
     taddr = Address(ns.nd_ns_target);
     daddr = Address(ip6h.ip6_dst);
@@ -225,14 +225,14 @@ ssize_t Interface::write_solicit(const Address& taddr)
 {
     char buf[128] = {};
 
-    auto& ns = *(nd_neighbor_solicit*) &buf[0];
+    auto& ns = *reinterpret_cast<nd_neighbor_solicit*>(buf);
     ns.nd_ns_type = ND_NEIGHBOR_SOLICIT;
+    ns.nd_ns_target = taddr.c_addr();
 
-    auto& opt = *(nd_opt_hdr*) &buf[sizeof(nd_neighbor_solicit)];
+    auto& opt = *reinterpret_cast<nd_opt_hdr*>(buf + sizeof(nd_neighbor_solicit));
     opt.nd_opt_type = ND_OPT_SOURCE_LINKADDR;
     opt.nd_opt_len = 1;
 
-    memcpy(&ns.nd_ns_target, &taddr.c_addr(), sizeof(in6_addr));
     memcpy(buf + sizeof(nd_neighbor_solicit) + sizeof(nd_opt_hdr), &hwaddr, 6);
 
     // FIXME: Alright, I'm lazy.
@@ -282,11 +282,8 @@ ssize_t Interface::read_advert(Address& saddr, Address& taddr)
     t_saddr.sin6_family = AF_INET6;
     t_saddr.sin6_port = htons(IPPROTO_ICMPV6); // Needed?
 
-    if ((len = _icmp6_socket->recvmsg(t_saddr, msg, sizeof(msg))) < 0) {
-        if (errno != EAGAIN)
-            Logger::warning() << "iface::read_advert() failed: " << Logger::err();
+    if ((len = _icmp6_socket->recvmsg(t_saddr, msg, sizeof(msg))) < 0)
         return -1;
-    }
 
     saddr = Address(t_saddr.sin6_addr);
 
@@ -311,18 +308,20 @@ bool Interface::is_local(const Address& addr)
     return Netlink::is_local(addr);
 }
 
-bool Interface::handle_local(const Address& saddr, const Address& taddr)
+bool Interface::handle_local(const Address& source, const Address& target)
 {
-    for (const Address& adddress : Netlink::local_addresses()) {
-        // Loop through all the serves that are using this iface to respond to NDP solicitation requests
-        for (Proxy& proxy : _serves) {
-            for (const auto& rule : proxy.rules()) {
+    for (const auto& nla : Netlink::local_addresses()) {
+        if (nla.address() != target)
+            continue;
 
-                // TODO
-                //if (ru->daughter() && ru->daughter()->name() == (*ad)->ifname())
-                {
-                    Logger::debug() << "proxy::handle_solicit() found local taddr=" << taddr;
-                    write_advert(saddr, taddr, false);
+        for (const auto& proxy : Proxy::proxies()) {
+            if (proxy->iface().get() != this)
+                continue;
+
+            for (const auto& rule : proxy->rules()) {
+                if (rule->iface()->_index == nla.index()) {
+                    Logger::debug() << "Interface::handle_local() found local taddr=" << target;
+                    write_advert(source, target, false);
                     return true;
                 }
             }

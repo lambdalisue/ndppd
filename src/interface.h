@@ -65,7 +65,7 @@ public:
     // Reads a NB_NEIGHBOR_ADVERT message from the _ifd socket;
     ssize_t read_advert(Address& saddr, Address& taddr);
 
-    bool handle_local(const Address& saddr, const Address& taddr);
+    bool handle_local(const Address& source, const Address& target);
 
     bool is_local(const Address& addr);
 

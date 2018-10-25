@@ -68,8 +68,8 @@ bool Socket::poll_all()
 
             if (it != sockets.cend()) {
                 Socket& socket = *it;
-                if (socket._handler)
-                    socket._handler(socket);
+                if (socket.handler)
+                    socket.handler(socket);
             }
         }
     }
@@ -78,7 +78,7 @@ bool Socket::poll_all()
 }
 
 Socket::Socket(int domain, int type, int protocol)
-        : _handler(nullptr)
+        : handler {}
 {
     if ((_fd = ::socket(domain, type, protocol)) < 0)
         throw std::system_error(errno, std::generic_category(), "Socket::Socket()");
@@ -89,14 +89,8 @@ Socket::Socket(int domain, int type, int protocol)
 Socket::~Socket()
 {
     ::close(_fd);
-    sockets.remove_if([&](Socket& socket) { return &socket == this; });
+    sockets.remove_if([this](Socket& socket) { return &socket == this; });
     pollfds_dirty = true;
-}
-
-void Socket::handler(SocketHandler handler, void* userdata)
-{
-    _handler = std::move(handler);
-    _userdata = userdata;
 }
 
 void Socket::ioctl(unsigned long request, void* data) const

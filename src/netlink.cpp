@@ -30,8 +30,10 @@
 NDPPD_NS_BEGIN
 
 namespace {
-static std::unique_ptr<Socket> sockets;
-static std::set<Address> local_addresses;
+std::unique_ptr<Socket> sockets;
+std::set<NetlinkAddress> local_addresses;
+
+
 }
 
 static void handler(Socket& socket)
@@ -43,20 +45,40 @@ static void handle_address(nlmsghdr* nlh)
 {
     static Address localhost("::1");
 
-    auto data = (ifaddrmsg*) NLMSG_DATA(nlh);
+    auto data = static_cast<ifaddrmsg*>(NLMSG_DATA(nlh));
     int len = IFA_PAYLOAD(nlh);
 
     for (auto rta = IFA_RTA(data); RTA_OK(rta, len); rta = RTA_NEXT(rta, len)) {
         if (rta->rta_type == IFA_ADDRESS) {
-            auto address = Address(*(in6_addr*) RTA_DATA(rta));
+            auto address = Address(*static_cast<in6_addr*>(RTA_DATA(rta)));
 
             if (address == localhost)
                 continue;
 
-            local_addresses.insert(address);
+            local_addresses.insert(NetlinkAddress(address, data->ifa_index));
             Logger::info() << "Registered local address " << address.to_string();
         }
     }
+}
+
+NetlinkAddress::NetlinkAddress(const ndppd::Address& address, int index)
+        : _address(address), _index(index)
+{
+}
+
+const Address& NetlinkAddress::address() const
+{
+    return _address;
+}
+
+int NetlinkAddress::index() const
+{
+    return _index;
+}
+
+bool NetlinkAddress::operator<(const ndppd::NetlinkAddress& rval) const
+{
+    return _address < rval._address || (_address == rval._address && _index < rval._index);
 }
 
 void Netlink::initialize()
@@ -70,7 +92,7 @@ void Netlink::finalize()
     sockets.reset();
 }
 
-const Range<std::set<Address>::const_iterator> Netlink::local_addresses()
+const Range<std::set<NetlinkAddress>::const_iterator> Netlink::local_addresses()
 {
     return { ndppd::local_addresses.cbegin(), ndppd::local_addresses.cend() };
 }
@@ -111,13 +133,14 @@ void Netlink::load_local_ips()
     }
 
     for (auto a : local_addresses())
-        std::cout << a.to_string() << std::endl;
+        std::cout << a.address().to_string() << std::endl;
 
 }
 
 bool Netlink::is_local(const Address& address)
 {
-    return ndppd::local_addresses.find(address) != ndppd::local_addresses.end();
+    return std::find_if(ndppd::local_addresses.cbegin(), ndppd::local_addresses.cend(),
+            [&](const NetlinkAddress& nla) { return nla.address() == address; }) != ndppd::local_addresses.end();
 }
 
 void Netlink::test()

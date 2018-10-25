@@ -26,6 +26,22 @@
 
 NDPPD_NS_BEGIN
 
+class NetlinkAddress {
+public:
+
+    NetlinkAddress(const Address& address, int index);
+
+    const Address& address() const;
+
+    int index() const;
+
+    bool operator<(const NetlinkAddress& rval) const;
+
+private:
+    Address _address;
+    int _index;
+};
+
 class NetlinkRoute {
 public:
     bool autowired;
@@ -38,7 +54,7 @@ public:
 
     static void finalize();
 
-    static const Range<std::set<Address>::const_iterator> local_addresses();
+    static const Range<std::set<NetlinkAddress>::const_iterator> local_addresses();
 
     static void load_local_ips();
 

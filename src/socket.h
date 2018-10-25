@@ -29,21 +29,14 @@
 NDPPD_NS_BEGIN
 
 class Socket {
-    using SocketHandler = std::function<void(Socket&)>;
-
-private:
-    int _fd;
-    void* _userdata;
-    SocketHandler _handler;
-
 public:
+    std::function<void(Socket&)> handler;
+
     static bool poll_all();
 
     Socket(int domain, int type, int protocol);
 
     ~Socket();
-
-    void handler(SocketHandler handler, void* userdata = nullptr);
 
     void ioctl(unsigned long request, void* data) const;
 
@@ -84,6 +77,9 @@ public:
         if (::setsockopt(_fd, level, optname, &val, sizeof(val)) != 0)
             throw std::system_error(errno, std::generic_category(), "Socket::setsockopt()");
     }
+
+private:
+    int _fd;
 };
 
 NDPPD_NS_END

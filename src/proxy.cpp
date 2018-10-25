@@ -26,7 +26,7 @@
 NDPPD_NS_BEGIN
 
 namespace {
-std::list<std::unique_ptr<Proxy>> proxies;
+std::list<std::unique_ptr<Proxy>> l_proxies;
 }
 
 Proxy::Proxy(const std::shared_ptr<Interface>& iface, bool promiscuous)
@@ -42,7 +42,7 @@ Proxy& Proxy::create(const std::string& ifname, bool promiscuous)
     iface->ensure_packet_socket(promiscuous);
     auto proxy = std::make_unique<Proxy>(iface, promiscuous);
     auto& ref = *proxy;
-    proxies.push_back(std::move(proxy));
+    l_proxies.push_back(std::move(proxy));
     return ref;
 }
 
@@ -188,6 +188,11 @@ bool Proxy::promiscuous() const
 const Range<std::list<std::unique_ptr<Rule> >::const_iterator> Proxy::rules() const
 {
     return { _rules.cbegin(), _rules.cend() };
+}
+
+const Range<std::list<std::unique_ptr<Proxy>>::const_iterator> Proxy::proxies()
+{
+    return { l_proxies.cbegin(), l_proxies.cend() };
 }
 
 NDPPD_NS_END

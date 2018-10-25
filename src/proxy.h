@@ -47,6 +47,8 @@ public:
 
     static Proxy& create(const std::string& ifname, bool promiscuous);
 
+    static const Range<std::list<std::unique_ptr<Proxy>>::const_iterator> proxies();
+
     Proxy(const std::shared_ptr<Interface>& iface, bool promisc);
 
     Session* find_or_create_session(const Address& taddr);

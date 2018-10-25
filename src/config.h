@@ -48,7 +48,7 @@ public:
 
     bool empty() const;
 
-    std::vector<std::shared_ptr<Config> > find_all(const std::string& name) const;
+    std::vector<std::shared_ptr<Config>> find_all(const std::string& name) const;
 
     std::shared_ptr<Config> find(const std::string& name, int index = 0) const;
 
@@ -59,7 +59,7 @@ private:
 
     bool _is_block;
 
-    std::multimap<std::string, std::shared_ptr<Config> > _map;
+    std::multimap<std::string, std::shared_ptr<Config>> _map;
 
     void dump(Logger& logger, int level) const;
 
