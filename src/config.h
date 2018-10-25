@@ -28,7 +28,7 @@
 
 NDPPD_NS_BEGIN
 
-class conf {
+class Config {
 public:
 
 private:
@@ -36,7 +36,7 @@ private:
 
     bool _is_block;
 
-    std::multimap<std::string, std::shared_ptr<conf> > _map;
+    std::multimap<std::string, std::shared_ptr<Config> > _map;
 
     void dump(Logger& logger, int level) const;
 
@@ -47,15 +47,15 @@ private:
     bool parse(const char** str);
 
 public:
-    conf();
+    Config();
 
-    static std::shared_ptr<conf> load(const std::string& path);
+    static std::shared_ptr<Config> load(const std::string& path);
 
     bool is_block() const;
 
-    std::shared_ptr<conf> operator[](const std::string& name) const;
+    std::shared_ptr<Config> operator[](const std::string& name) const;
 
-    std::shared_ptr<conf> operator()(const std::string& name, int index = 0) const;
+    std::shared_ptr<Config> operator()(const std::string& name, int index = 0) const;
 
     operator const std::string&() const;
 
@@ -71,9 +71,9 @@ public:
 
     bool empty() const;
 
-    std::vector<std::shared_ptr<conf> > find_all(const std::string& name) const;
+    std::vector<std::shared_ptr<Config> > find_all(const std::string& name) const;
 
-    std::shared_ptr<conf> find(const std::string& name, int index = 0) const;
+    std::shared_ptr<Config> find(const std::string& name, int index = 0) const;
 
     void dump(LogLevel logLevel = LogLevel::Info) const;
 

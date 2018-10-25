@@ -26,31 +26,31 @@
 #include <netinet/ip6.h>
 
 #include "ndppd.h"
-#include "conf.h"
+#include "config.h"
 
 NDPPD_NS_BEGIN
 
-conf::conf()
+Config::Config()
         : _is_block(false)
 {
 }
 
-conf::operator int() const
+Config::operator int() const
 {
     return as_int();
 }
 
-conf::operator const std::string&() const
+Config::operator const std::string&() const
 {
     return as_str();
 }
 
-conf::operator bool() const
+Config::operator bool() const
 {
     return as_bool();
 }
 
-bool conf::as_bool() const
+bool Config::as_bool() const
 {
     if (!strcasecmp(_value.c_str(), "true") || !strcasecmp(_value.c_str(), "yes"))
         return true;
@@ -58,22 +58,22 @@ bool conf::as_bool() const
         return false;
 }
 
-const std::string& conf::as_str() const
+const std::string& Config::as_str() const
 {
     return _value;
 }
 
-int conf::as_int() const
+int Config::as_int() const
 {
     return atoi(_value.c_str());
 }
 
-bool conf::empty() const
+bool Config::empty() const
 {
     return _value.empty();
 }
 
-std::shared_ptr<conf> conf::load(const std::string& path)
+std::shared_ptr<Config> Config::load(const std::string& path)
 {
     try {
         std::ifstream ifs;
@@ -84,7 +84,7 @@ std::shared_ptr<conf> conf::load(const std::string& path)
 
         const char* c_buf = buf.c_str();
 
-        std::shared_ptr<conf> cf(new conf);
+        std::shared_ptr<Config> cf(new Config);
 
         if (cf->parse_block(&c_buf)) {
             cf->dump(LogLevel::Debug);
@@ -97,15 +97,15 @@ std::shared_ptr<conf> conf::load(const std::string& path)
         Logger::error() << "Failed to load configuration file '" << path << "'";
     }
 
-    return std::shared_ptr<conf>();
+    return std::shared_ptr<Config>();
 }
 
-bool conf::is_block() const
+bool Config::is_block() const
 {
     return _is_block;
 }
 
-const char* conf::skip(const char* str, bool newlines)
+const char* Config::skip(const char* str, bool newlines)
 {
     while (*str) {
         while (*str && isspace(*str) && ((*str != '\n') || newlines))
@@ -131,7 +131,7 @@ const char* conf::skip(const char* str, bool newlines)
     return str;
 }
 
-bool conf::parse_block(const char** str)
+bool Config::parse_block(const char** str)
 {
     const char* p = *str;
 
@@ -157,10 +157,10 @@ bool conf::parse_block(const char** str)
             p = skip(p, false);
         }
 
-        std::shared_ptr<conf> cf(new conf);
+        std::shared_ptr<Config> cf(new Config);
 
         if (cf->parse(&p))
-            _map.insert(std::pair<std::string, std::shared_ptr<conf> >(ss.str(), cf));
+            _map.insert(std::pair<std::string, std::shared_ptr<Config> >(ss.str(), cf));
         else
             return false;
     }
@@ -169,7 +169,7 @@ bool conf::parse_block(const char** str)
     return true;
 }
 
-bool conf::parse(const char** str)
+bool Config::parse(const char** str)
 {
     const char* p = *str;
     std::stringstream ss;
@@ -206,13 +206,13 @@ bool conf::parse(const char** str)
     return true;
 }
 
-void conf::dump(LogLevel logLevel) const
+void Config::dump(LogLevel logLevel) const
 {
     Logger l(logLevel);
     dump(l, 0);
 }
 
-void conf::dump(Logger& logger, int level) const
+void Config::dump(Logger& logger, int level) const
 {
     std::string pfx;
     for (int i = 0; i < level; i++) {
@@ -224,7 +224,7 @@ void conf::dump(Logger& logger, int level) const
 
     if (_is_block) {
         logger << "{" << Logger::endl;
-        std::multimap<std::string, std::shared_ptr<conf> >::const_iterator it;
+        std::multimap<std::string, std::shared_ptr<Config> >::const_iterator it;
 
         for (it = _map.begin(); it != _map.end(); it++) {
             logger << pfx << "    " << it->first << " ";
@@ -237,35 +237,35 @@ void conf::dump(Logger& logger, int level) const
     logger << Logger::endl;
 }
 
-std::shared_ptr<conf> conf::operator()(const std::string& name, int index) const
+std::shared_ptr<Config> Config::operator()(const std::string& name, int index) const
 {
     return find(name, index);
 }
 
-std::shared_ptr<conf> conf::find(const std::string& name, int index) const
+std::shared_ptr<Config> Config::find(const std::string& name, int index) const
 {
-    std::multimap<std::string, std::shared_ptr<conf> >::const_iterator it;
+    std::multimap<std::string, std::shared_ptr<Config> >::const_iterator it;
     for (it = _map.find(name); it != _map.end(); it++) {
         if (index-- <= 0)
             return it->second;
     }
 
-    return std::shared_ptr<conf>();
+    return std::shared_ptr<Config>();
 }
 
-std::shared_ptr<conf> conf::operator[](const std::string& name) const
+std::shared_ptr<Config> Config::operator[](const std::string& name) const
 {
     return find(name, 0);
 }
 
-std::vector<std::shared_ptr<conf> > conf::find_all(const std::string& name) const
+std::vector<std::shared_ptr<Config> > Config::find_all(const std::string& name) const
 {
-    std::vector<std::shared_ptr<conf> > vec;
+    std::vector<std::shared_ptr<Config> > vec;
 
-    std::multimap<std::string, std::shared_ptr<conf> >::const_iterator it;
+    std::multimap<std::string, std::shared_ptr<Config> >::const_iterator it;
 
-    std::pair<std::multimap<std::string, std::shared_ptr<conf> >::const_iterator,
-            std::multimap<std::string, std::shared_ptr<conf> >::const_iterator> ret;
+    std::pair<std::multimap<std::string, std::shared_ptr<Config> >::const_iterator,
+            std::multimap<std::string, std::shared_ptr<Config> >::const_iterator> ret;
 
     ret = _map.equal_range(name);
 
@@ -275,7 +275,7 @@ std::vector<std::shared_ptr<conf> > conf::find_all(const std::string& name) cons
     return vec;
 }
 
-conf::operator const std::string&()
+Config::operator const std::string&()
 {
     return _value;
 }

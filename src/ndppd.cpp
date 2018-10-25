@@ -29,7 +29,7 @@
 #include "ndppd.h"
 #include "netlink.h"
 #include "socket.h"
-#include "conf.h"
+#include "config.h"
 #include "cidr.h"
 #include "interface.h"
 #include "session.h"
@@ -69,31 +69,31 @@ static int daemonize()
     return 0;
 }
 
-static std::shared_ptr<conf> load_config(const std::string& path)
+static std::shared_ptr<Config> load_config(const std::string& path)
 {
-    std::shared_ptr<conf> cf, x_cf;
+    std::shared_ptr<Config> cf, x_cf;
 
-    if (!(cf = conf::load(path)))
+    if (!(cf = Config::load(path)))
         return {};
 
-    std::vector<std::shared_ptr<conf> >::const_iterator p_it;
+    std::vector<std::shared_ptr<Config> >::const_iterator p_it;
 
-    std::vector<std::shared_ptr<conf> > proxies(cf->find_all("proxy"));
+    std::vector<std::shared_ptr<Config> > proxies(cf->find_all("proxy"));
 
     for (p_it = proxies.begin(); p_it != proxies.end(); p_it++) {
-        std::shared_ptr<conf> pr_cf = *p_it;
+        std::shared_ptr<Config> pr_cf = *p_it;
 
         if (pr_cf->empty()) {
             Logger::error() << "'proxy' section is missing interface name";
             return {};
         }
 
-        std::vector<std::shared_ptr<conf> >::const_iterator r_it;
+        std::vector<std::shared_ptr<Config> >::const_iterator r_it;
 
-        std::vector<std::shared_ptr<conf> > rules(pr_cf->find_all("rule"));
+        std::vector<std::shared_ptr<Config> > rules(pr_cf->find_all("rule"));
 
         for (r_it = rules.begin(); r_it != rules.end(); r_it++) {
-            std::shared_ptr<conf> ru_cf = *r_it;
+            std::shared_ptr<Config> ru_cf = *r_it;
 
             if (ru_cf->empty()) {
                 Logger::error() << "'rule' is missing an IPv6 address/net";
@@ -139,16 +139,16 @@ static std::shared_ptr<conf> load_config(const std::string& path)
     return cf;
 }
 
-static bool configure(std::shared_ptr<conf>& cf)
+static bool configure(std::shared_ptr<Config>& cf)
 {
-    std::shared_ptr<conf> x_cf;
+    std::shared_ptr<Config> x_cf;
 
-    std::vector<std::shared_ptr<conf> >::const_iterator p_it;
+    std::vector<std::shared_ptr<Config> >::const_iterator p_it;
 
-    std::vector<std::shared_ptr<conf> > proxies(cf->find_all("proxy"));
+    std::vector<std::shared_ptr<Config> > proxies(cf->find_all("proxy"));
 
     for (p_it = proxies.begin(); p_it != proxies.end(); p_it++) {
-        std::shared_ptr<conf> pr_cf = *p_it;
+        std::shared_ptr<Config> pr_cf = *p_it;
 
         if (pr_cf->empty())
             return false;
@@ -184,12 +184,12 @@ static bool configure(std::shared_ptr<conf>& cf)
         if (!(x_cf = pr_cf->find("timeout")))
             proxy.timeout = *x_cf;
 
-        std::vector<std::shared_ptr<conf> >::const_iterator r_it;
+        std::vector<std::shared_ptr<Config> >::const_iterator r_it;
 
-        std::vector<std::shared_ptr<conf> > rules(pr_cf->find_all("rule"));
+        std::vector<std::shared_ptr<Config> > rules(pr_cf->find_all("rule"));
 
         for (r_it = rules.begin(); r_it != rules.end(); r_it++) {
-            std::shared_ptr<conf> ru_cf = *r_it;
+            std::shared_ptr<Config> ru_cf = *r_it;
 
             Cidr addr(*ru_cf);
 
@@ -309,7 +309,7 @@ int main(int argc, char* argv[], char* env[])
 
     // Load configuration.
 
-    std::shared_ptr<conf> cf = load_config(config_path);
+    std::shared_ptr<Config> cf = load_config(config_path);
     if (!cf)
         return -1;
 
