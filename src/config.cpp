@@ -37,35 +37,17 @@ Config::Config()
 
 Config::operator int() const
 {
-    return as_int();
+    return ::atoi(_value.c_str());
 }
 
 Config::operator const std::string&() const
 {
-    return as_str();
+    return _value;
 }
 
 Config::operator bool() const
 {
-    return as_bool();
-}
-
-bool Config::as_bool() const
-{
-    if (!strcasecmp(_value.c_str(), "true") || !strcasecmp(_value.c_str(), "yes"))
-        return true;
-    else
-        return false;
-}
-
-const std::string& Config::as_str() const
-{
-    return _value;
-}
-
-int Config::as_int() const
-{
-    return atoi(_value.c_str());
+    return !strcasecmp(_value.c_str(), "true") || !strcasecmp(_value.c_str(), "yes");
 }
 
 bool Config::empty() const
@@ -93,7 +75,7 @@ std::shared_ptr<Config> Config::load(const std::string& path)
 
         Logger::error() << "Could not parse configuration file";
     }
-    catch (const std::ifstream::failure &e) {
+    catch (const std::ifstream::failure& e) {
         Logger::error() << "Failed to load configuration file '" << path << "'";
     }
 
@@ -273,11 +255,6 @@ std::vector<std::shared_ptr<Config> > Config::find_all(const std::string& name) 
         vec.push_back(it->second);
 
     return vec;
-}
-
-Config::operator const std::string&()
-{
-    return _value;
 }
 
 NDPPD_NS_END

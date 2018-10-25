@@ -30,23 +30,6 @@ NDPPD_NS_BEGIN
 
 class Config {
 public:
-
-private:
-    std::string _value;
-
-    bool _is_block;
-
-    std::multimap<std::string, std::shared_ptr<Config> > _map;
-
-    void dump(Logger& logger, int level) const;
-
-    static const char* skip(const char* str, bool all = true);
-
-    bool parse_block(const char** str);
-
-    bool parse(const char** str);
-
-public:
     Config();
 
     static std::shared_ptr<Config> load(const std::string& path);
@@ -63,12 +46,6 @@ public:
 
     operator bool() const;
 
-    bool as_bool() const;
-
-    const std::string& as_str() const;
-
-    int as_int() const;
-
     bool empty() const;
 
     std::vector<std::shared_ptr<Config> > find_all(const std::string& name) const;
@@ -77,8 +54,20 @@ public:
 
     void dump(LogLevel logLevel = LogLevel::Info) const;
 
-    operator const std::string&();
+private:
+    std::string _value;
 
+    bool _is_block;
+
+    std::multimap<std::string, std::shared_ptr<Config> > _map;
+
+    void dump(Logger& logger, int level) const;
+
+    static const char* skip(const char* str, bool all = true);
+
+    bool parse_block(const char** str);
+
+    bool parse(const char** str);
 };
 
 NDPPD_NS_END
