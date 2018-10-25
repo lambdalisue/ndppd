@@ -40,7 +40,7 @@ public:
 
     static void update_all(int elapsed_time);
 
-    Session(Proxy& proxy, const Address& taddr, bool autowire, bool keepalive, int retries);
+    Session(Proxy& proxy, const Address& taddr, bool keepalive, int retries);
 
     ~Session();
 
@@ -50,19 +50,11 @@ public:
 
     const Address& taddr() const;
 
-    const Address& daddr() const;
-
-    const Address& saddr() const;
-
-    bool autowire() const;
-
     int retries() const;
 
     int fails() const;
 
     bool keepalive() const;
-
-    bool wired() const;
 
     bool touched() const;
 
@@ -72,26 +64,16 @@ public:
 
     void handle_advert();
 
-    void handle_advert(const Address& saddr, const std::string& ifname, bool use_via);
-
     void send_advert(const Address& daddr);
 
     void send_solicit();
 
-    void refesh();
-
 private:
     Proxy& _proxy;
 
-    Address _saddr, _daddr, _taddr;
-
-    bool _autowire;
+    Address _taddr;
 
     bool _keepalive;
-
-    bool _wired;
-
-    Address _wired_via;
 
     bool _touched;
 

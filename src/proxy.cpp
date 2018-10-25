@@ -66,13 +66,13 @@ Session* Proxy::find_or_create_session(const Address& taddr)
     // and then set up a new session.
 
     for (const auto& rule : _rules) {
-        Logger::debug() << "checking " << rule->cidr() << " against " << taddr;
+        Logger::debug() << "Checking " << rule->cidr() << " against " << taddr;
 
         if (!(rule->cidr() % taddr))
             continue;
 
         if (!session)
-            session = std::make_unique<Session>(*this, taddr, autowire, keepalive, retries);
+            session = std::make_unique<Session>(*this, taddr, keepalive, retries);
 
         if (rule->is_auto()) {
             // TODO: Implement route support again

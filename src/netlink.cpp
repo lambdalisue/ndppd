@@ -22,18 +22,18 @@
 #include <iostream>
 #include <set>
 
-#include "ndppd.h"
 #include "netlink.h"
+#include "ndppd.h"
 #include "socket.h"
 #include "ndppd.h"
+#include "nl_address.h"
 
 NDPPD_NS_BEGIN
 
 namespace {
 std::unique_ptr<Socket> sockets;
-std::set<NetlinkAddress> local_addresses;
-
-
+std::set<NetlinkAddress> g_local_addresses;
+std::list<std::unique_ptr<NetlinkRoute>> g_routes;
 }
 
 static void handler(Socket& socket)
@@ -55,31 +55,30 @@ static void handle_address(nlmsghdr* nlh)
             if (address == localhost)
                 continue;
 
-            local_addresses.insert(NetlinkAddress(address, data->ifa_index));
+            g_local_addresses.insert(NetlinkAddress(address, Interface::get_or_create(data->ifa_index)));
             Logger::info() << "Registered local address " << address << " index " << data->ifa_index;
         }
     }
 }
 
-NetlinkAddress::NetlinkAddress(const ndppd::Address& address, int index)
-        : _address(address), _index(index)
+static void handle_new_route(const nlmsghdr* nlh)
 {
+    Logger::error() << "new route";
+
+    auto data = static_cast<rtmsg*>(NLMSG_DATA(nlh));
+    int len = RTM_PAYLOAD(nlh);
+
+    for (auto rta = RTM_RTA(data); RTA_OK(rta, len); rta = RTA_NEXT(rta, len)) {
+        if (rta->rta_type == RTA_DST) {
+            Cidr cidr;
+            cidr.addr() = *static_cast<in6_addr*>(RTA_DATA(rta));
+
+            Logger::error() << "payload";
+        }
+    }
+
 }
 
-const Address& NetlinkAddress::address() const
-{
-    return _address;
-}
-
-int NetlinkAddress::index() const
-{
-    return _index;
-}
-
-bool NetlinkAddress::operator<(const ndppd::NetlinkAddress& rval) const
-{
-    return _address < rval._address || (_address == rval._address && _index < rval._index);
-}
 
 void Netlink::initialize()
 {
@@ -94,7 +93,7 @@ void Netlink::finalize()
 
 const Range<std::set<NetlinkAddress>::const_iterator> Netlink::local_addresses()
 {
-    return { ndppd::local_addresses.cbegin(), ndppd::local_addresses.cend() };
+    return { g_local_addresses.cbegin(), g_local_addresses.cend() };
 }
 
 void Netlink::load_local_ips()
@@ -105,79 +104,78 @@ void Netlink::load_local_ips()
     } payload {{ NLMSG_LENGTH(sizeof(rtgenmsg)), RTM_GETADDR, NLM_F_REQUEST | NLM_F_DUMP, 1 },
                { AF_INET6 }};
 
-    if (sockets->sendmsg((sockaddr_nl) { AF_NETLINK }, &payload, sizeof(payload)) < 0)
-        throw std::system_error(errno, std::generic_category());
+    sockets->sendmsg((sockaddr_nl) { AF_NETLINK }, &payload, sizeof(payload));
 
-    char buf[1024];
-
+    char buf[4096];
     sockaddr_nl sa {};
-    auto len = sockets->recvmsg(sa, buf, sizeof(buf), true);
-    if (len < 0)
-        throw std::system_error(errno, std::generic_category());
 
-    for (auto nlh = (nlmsghdr*) (void*) buf; NLMSG_OK(nlh, len); nlh = NLMSG_NEXT(nlh, len)) {
-        switch (nlh->nlmsg_type) {
-        case NLMSG_ERROR:
-            return;
+    for (;;) {
+        auto len = sockets->recvmsg(sa, buf, sizeof(buf));
 
-        case NLMSG_DONE:
-            return;
+        Logger::error() << len;
 
-        case RTM_NEWADDR:
-            handle_address(nlh);
-            continue;
+        for (auto nlh = (nlmsghdr*) (void*) buf; NLMSG_OK(nlh, len); nlh = NLMSG_NEXT(nlh, len)) {
+            switch (nlh->nlmsg_type) {
+            case NLMSG_ERROR:
+                return;
 
-        default:
-            Logger::debug() << "Unexpected NL message";
+            case NLMSG_DONE:
+                return;
+
+            case RTM_NEWADDR:
+                handle_address(nlh);
+                continue;
+
+            default:
+                Logger::error() << "Unexpected NL message";
+            }
         }
     }
-
-    for (auto a : local_addresses())
-        std::cout << a.address().to_string() << std::endl;
-
 }
 
 bool Netlink::is_local(const Address& address)
 {
-    return std::find_if(ndppd::local_addresses.cbegin(), ndppd::local_addresses.cend(),
-            [&](const NetlinkAddress& nla) { return nla.address() == address; }) != ndppd::local_addresses.end();
+    return std::find_if(g_local_addresses.cbegin(), g_local_addresses.cend(),
+            [&](const NetlinkAddress& nla) { return nla.address() == address; }) != g_local_addresses.end();
 }
 
-void Netlink::test()
+void Netlink::load_routes()
 {
+    g_routes.clear();
+
     struct {
         nlmsghdr hdr;
-        rtgenmsg gen;
-    } payload {{ NLMSG_LENGTH(sizeof(rtgenmsg)), RTM_GETROUTE, NLM_F_REQUEST | NLM_F_DUMP, 1 },
-               { AF_INET6 }};
+        rtmsg gen;
+    } payload {{ NLMSG_LENGTH(sizeof(rtmsg)), RTM_GETROUTE, NLM_F_REQUEST | NLM_F_DUMP, 1 },
+               { AF_INET6, 0, 0, 0, RT_TABLE_MAIN, RTPROT_UNSPEC }};
 
-    if (sockets->sendmsg((sockaddr_nl) { AF_NETLINK }, &payload, sizeof(payload)) < 0)
-        throw std::system_error(errno, std::generic_category());
+    sockets->sendmsg((sockaddr_nl) { AF_NETLINK }, &payload, sizeof(payload));
 
-    char buf[1024];
+    char buf[4096];
 
     sockaddr_nl sa {};
-    auto len = sockets->recvmsg(sa, buf, sizeof(buf), true);
-    if (len < 0)
-        throw std::system_error(errno, std::generic_category());
 
-    for (auto nh = (nlmsghdr*) (void*) buf; NLMSG_OK(nh, len); NLMSG_NEXT(nh, len)) {
-        auto entry = (rtmsg*) NLMSG_DATA(nh);
+    for (;;) {
+        auto len = sockets->recvmsg(sa, buf, sizeof(buf), true);
 
-        // entry->rtm_dst_len
+        for (auto nh = (nlmsghdr*) (void*) buf; NLMSG_OK(nh, len); nh = NLMSG_NEXT(nh, len)) {
+            switch (nh->nlmsg_type) {
+            case NLMSG_ERROR:
+                return;
 
-        if (nh->nlmsg_type == NLMSG_ERROR)
-            break;
+            case NLMSG_DONE:
+                return;
 
-        auto rta = RTM_RTA(entry);
-        auto rta_len = RTM_PAYLOAD(nh);
+            case RTM_NEWROUTE:
+                handle_new_route(nh);
+                continue;
 
-        for (; RTA_OK(rta, rta_len); rta = RTA_NEXT(rta, rta_len)) {
-            if (rta->rta_type == RTA_DST) {
-
+            default:
+                Logger::debug() << "Unexpected NL message";
             }
         }
     }
+
 }
 
 NDPPD_NS_END

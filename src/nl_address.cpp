@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011-2018  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,35 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef NDPPD_NETLINK_H
-#define NDPPD_NETLINK_H
-
-#include <memory>
-#include <set>
-#include "ndppd.h"
-#include "socket.h"
-#include "address.h"
-#include "range.h"
 #include "nl_address.h"
-#include "nl_route.h"
+#include "address.h"
 
 NDPPD_NS_BEGIN
 
-class Netlink {
-public:
-    static void initialize();
+NetlinkAddress::NetlinkAddress(const ndppd::Address& address, const std::shared_ptr<Interface>& iface)
+        : _address(address), _iface(iface)
+{
+}
 
-    static void finalize();
+const Address& NetlinkAddress::address() const
+{
+    return _address;
+}
 
-    static const Range<std::set<NetlinkAddress>::const_iterator> local_addresses();
+const std::shared_ptr<Interface>& NetlinkAddress::iface() const
+{
+    return _iface;
+}
 
-    static void load_local_ips();
-
-    static bool is_local(const Address& address);
-
-    static void load_routes();
-};
+bool NetlinkAddress::operator<(const ndppd::NetlinkAddress& rval) const
+{
+    return _address < rval._address || (_address == rval._address && _iface->index() < rval._iface->index());
+}
 
 NDPPD_NS_END
-
-#endif

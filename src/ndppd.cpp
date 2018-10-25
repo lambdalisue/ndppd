@@ -296,6 +296,7 @@ int main(int argc, char* argv[], char* env[])
 
     Netlink::initialize();
     Netlink::load_local_ips();
+    Netlink::load_routes();
 
     while (running) {
         Socket::poll_all();

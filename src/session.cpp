@@ -41,13 +41,13 @@ void Session::update_all(int elapsed_time)
         case Session::WAITING:
         case Session::RENEWING:
             if (session._fails < session._retries) {
-                Logger::debug() << "Session still waiting (taddr=" << session._taddr << ")";
+                Logger::debug() << "Session is still WAITING (taddr=" << session._taddr << ")";
                 session._ttl = session._proxy.timeout;
                 session._fails++;
                 session.send_solicit();
             }
             else {
-                Logger::debug() << "session is now invalid [taddr=" << session._taddr << "]";
+                Logger::debug() << "Session became INVALID (taddr=" << session._taddr << ")";
                 session._status = Session::INVALID;
                 session._ttl = session._proxy.timeout;
             }
@@ -55,7 +55,7 @@ void Session::update_all(int elapsed_time)
 
         case Session::VALID:
             if (session.keepalive()) {
-                Logger::debug() << "session is renewing [taddr=" << session._taddr << "]";
+                Logger::debug() << "Session is RENEWING (taddr=" << session._taddr << ")";
                 session._status = Session::RENEWING;
                 session._ttl = session._proxy.timeout;
                 session._fails = 0;
@@ -71,9 +71,9 @@ void Session::update_all(int elapsed_time)
     }
 }
 
-Session::Session(Proxy& proxy, const Address& taddr, bool autowire, bool keepalive, int retries)
-        : _proxy(proxy), _taddr(taddr), _autowire(autowire), _keepalive(keepalive), _retries(retries),
-          _ttl(proxy.ttl), _wired(false), _touched(false)
+Session::Session(Proxy& proxy, const Address& taddr, bool keepalive, int retries)
+        : _proxy(proxy), _taddr(taddr), _keepalive(keepalive), _retries(retries),
+          _ttl(proxy.ttl), _touched(false)
 {
     Logger::debug() << "Session::create() pr=" << Logger::format("%x", &proxy)
                     << ", proxy=" << (proxy.iface() ? proxy.iface()->name() : "null")
@@ -127,7 +127,7 @@ void Session::handle_advert()
 
     if (_status != VALID) {
         _status = VALID;
-        Logger::debug() << "Session became active (taddr=" << _taddr << ")";
+        Logger::debug() << "Session became VALID (taddr=" << _taddr << ")";
     }
 
     _ttl = _proxy.ttl;
@@ -146,11 +146,6 @@ const Address& Session::taddr() const
     return _taddr;
 }
 
-bool Session::autowire() const
-{
-    return _autowire;
-}
-
 bool Session::keepalive() const
 {
     return _keepalive;
@@ -164,11 +159,6 @@ int Session::retries() const
 int Session::fails() const
 {
     return _fails;
-}
-
-bool Session::wired() const
-{
-    return _wired;
 }
 
 bool Session::touched() const

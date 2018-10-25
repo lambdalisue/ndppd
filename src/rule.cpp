@@ -29,7 +29,8 @@ NDPPD_NS_BEGIN
 Rule::Rule(Proxy& proxy, const Cidr& cidr, const std::shared_ptr<Interface>& iface)
         : _proxy(proxy), _cidr(cidr), _iface(iface), _auto(false)
 {
-    Logger::debug() << "Rule::Rule() if=" << proxy.iface()->name() << ", slave=" << iface->name() << ", cidr=" << cidr;
+    Logger::debug() << "Rule::Rule() if=" << proxy.iface()->name() << ", slave=" << iface->name()
+                    << ", cidr=" << cidr;
     _iface->rules.push_back(std::ref(*this));
 }
 

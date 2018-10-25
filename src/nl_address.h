@@ -1,5 +1,5 @@
 // ndppd - NDP Proxy Daemon
-// Copyright (C) 2011-2018  Daniel Adolfsson <daniel@priv.nu>
+// Copyright (C) 2011  Daniel Adolfsson <daniel@priv.nu>
 //
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,35 +14,32 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef NDPPD_NETLINK_H
-#define NDPPD_NETLINK_H
+#ifndef NDPPD_NL_ADDRESS_H
+#define NDPPD_NL_ADDRESS_H
 
 #include <memory>
-#include <set>
+
 #include "ndppd.h"
-#include "socket.h"
 #include "address.h"
-#include "range.h"
-#include "nl_address.h"
-#include "nl_route.h"
+#include "interface.h"
 
 NDPPD_NS_BEGIN
 
-class Netlink {
+class NetlinkAddress {
 public:
-    static void initialize();
+    NetlinkAddress(const Address& address, const std::shared_ptr<Interface>& iface);
 
-    static void finalize();
+    const Address& address() const;
 
-    static const Range<std::set<NetlinkAddress>::const_iterator> local_addresses();
+    const std::shared_ptr<Interface>& iface() const;
 
-    static void load_local_ips();
+    bool operator<(const NetlinkAddress& rval) const;
 
-    static bool is_local(const Address& address);
-
-    static void load_routes();
+private:
+    Address _address;
+    std::shared_ptr<Interface> _iface;
 };
 
 NDPPD_NS_END
 
-#endif
+#endif // NDPPD_NL_ADDRESS_H

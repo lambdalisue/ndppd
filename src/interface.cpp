@@ -375,4 +375,9 @@ const std::string& Interface::name() const
     return _name;
 }
 
+int Interface::index() const
+{
+    return _index;
+}
+
 NDPPD_NS_END

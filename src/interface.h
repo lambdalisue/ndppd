@@ -76,6 +76,8 @@ public:
     // Returns the name of the interface.
     const std::string& name() const;
 
+    int index() const;
+
 private:
     int _index;
 
