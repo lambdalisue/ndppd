@@ -34,7 +34,6 @@ static std::unique_ptr<Socket> sockets;
 static std::set<Address> local_addresses;
 }
 
-
 static void handler(Socket& socket)
 {
 

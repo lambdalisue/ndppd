@@ -28,6 +28,7 @@ NDPPD_NS_BEGIN
 
 class NetlinkRoute {
 public:
+    bool autowired;
 
 };
 

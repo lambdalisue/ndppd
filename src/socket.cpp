@@ -99,9 +99,10 @@ void Socket::handler(SocketHandler handler, void* userdata)
     _userdata = userdata;
 }
 
-bool Socket::ioctl(unsigned long request, void* data) const
+void Socket::ioctl(unsigned long request, void* data) const
 {
-    return ::ioctl(_fd, request, data) != -1;
+    if (::ioctl(_fd, request, data) == -1)
+        throw std::system_error(errno, std::generic_category(), "Socket::ioctl()");
 }
 
 NDPPD_NS_END

@@ -200,12 +200,10 @@ static bool configure(std::shared_ptr<Config>& cf)
                 autovia = *x_cf;
 
             if (x_cf = ru_cf->find("iface")) {
-                std::shared_ptr<Interface> ifa = Interface::open_ifd(*x_cf);
-                if (!ifa)
-                    return false;
-
-                ifa->add_parent(proxy);
-                proxy.add_rule(addr, ifa, autovia);
+                auto iface = Interface::get_or_create((const std::string&) *x_cf);
+                iface->ensure_icmp6_socket();
+                iface->add_parent(proxy);
+                proxy.add_rule(addr, iface, autovia);
             }
             else if (ru_cf->find("auto"))
                 proxy.add_rule(addr, true);
@@ -214,8 +212,9 @@ static bool configure(std::shared_ptr<Config>& cf)
         }
     }
 
-    // Print out all the topology    
-    for (auto& i_it : Interface::_map) {
+    // Print out all the topology
+    /*
+    for (Interface& iface : interfaces) {
         std::shared_ptr<Interface> ifa = i_it.second.lock();
 
         Logger::debug() << "iface " << ifa->name() << " {";
@@ -244,7 +243,7 @@ static bool configure(std::shared_ptr<Config>& cf)
 
         Logger::debug() << "  }";
         Logger::debug() << "}";
-    }
+    }*/
 
     return true;
 }

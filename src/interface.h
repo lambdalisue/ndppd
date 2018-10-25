@@ -38,14 +38,20 @@ class Proxy;
 
 class Interface {
 public:
-    Interface();
+    static std::shared_ptr<Interface> get_or_create(const std::string& name);
+
+    static std::shared_ptr<Interface> get_or_create(unsigned int index);
+
+    static std::shared_ptr<Interface> get_or_create(unsigned int index, const std::string& name);
+
+    Interface(unsigned int index, const std::string& name);
 
     // Destructor.
     ~Interface();
 
-    static std::shared_ptr<Interface> open_ifd(const std::string& name);
+    void ensure_icmp6_socket();
 
-    static std::shared_ptr<Interface> open_pfd(const std::string& name, bool promisc);
+    void ensure_packet_socket(bool promisc);
 
     // Writes a NB_NEIGHBOR_SOLICIT message to the _ifd socket.
     ssize_t write_solicit(const Address& taddr);
@@ -79,12 +85,13 @@ public:
     const Range<std::list<std::reference_wrapper<Proxy>>::const_iterator> serves() const;
 
 private:
-    void icmp6_handler();
+    int _index;
 
-    void packet_handler();
+    std::string _name;
 
-    // Weak pointer so this object can reference itself.
-    std::weak_ptr<Interface> _self;
+    void icmp6_handler(Socket&);
+
+    void packet_handler(Socket&);
 
     // The "generic" ICMPv6 socket for reading/writing NB_NEIGHBOR_ADVERT messages as well
     // as writing NB_NEIGHBOR_SOLICIT messages.
@@ -99,8 +106,6 @@ private:
     // Previous state of PROMISC for the interface
     int _prev_promisc;
 
-    // Name of this interface.
-    std::string _name;
 
     // List of proxies that will respond to neighbor solicitation messages.
     std::list<std::reference_wrapper<Proxy>> _serves;
@@ -111,12 +116,10 @@ private:
     // The link-layer address of this interface.
     ether_addr hwaddr;
 
-    // Turns on/off ALLMULTI for this interface - returns the previous state
-    // or -1 if there was an error.
+    // Turns on/off ALLMULTI for this interface - returns the previous state or -1 if there was an error.
     int allmulti(bool state = true);
 
-    // Turns on/off PROMISC for this interface - returns the previous state
-    // or -1 if there was an error
+    // Turns on/off PROMISC for this interface - returns the previous state or -1 if there was an error
     int promisc(bool state = true);
 };
 

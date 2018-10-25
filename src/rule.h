@@ -55,7 +55,7 @@ private:
 
     Cidr _cidr;
 
-    bool _aut;
+    bool _auto;
 };
 
 NDPPD_NS_END

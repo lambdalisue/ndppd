@@ -38,7 +38,9 @@ Proxy::Proxy(const std::shared_ptr<Interface>& iface, bool promiscuous)
 
 Proxy& Proxy::create(const std::string& ifname, bool promiscuous)
 {
-    auto proxy = std::make_unique<Proxy>(Interface::open_pfd(ifname, promiscuous), promiscuous);
+    auto iface = Interface::get_or_create(ifname);
+    iface->ensure_packet_socket(promiscuous);
+    auto proxy = std::make_unique<Proxy>(iface, promiscuous);
     auto& ref = *proxy;
     proxies.push_back(std::move(proxy));
     return ref;

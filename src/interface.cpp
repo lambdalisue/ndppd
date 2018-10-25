@@ -46,23 +46,55 @@
 NDPPD_NS_BEGIN
 
 namespace {
-std::list<std::reference_wrapper<Interface>> interfaces;
+std::list<std::weak_ptr<Interface>> interfaces;
 }
 
-std::map<std::string, std::weak_ptr<Interface> > Interface::_map;
-
-Interface::Interface()
-        : _icmp6_socket {}, _packet_socket {}, _name {}
+std::shared_ptr<Interface> Interface::get_or_create(unsigned int index)
 {
-    Logger::debug() << "Interface::Interface() name";
-    interfaces.push_back(std::ref(*this));
+    char name[IF_NAMESIZE];
+
+    if (if_indextoname(index, name) == nullptr)
+        throw std::system_error(errno, std::generic_category(), "Interface::get_or_create(index)");
+
+    return std::move(get_or_create(index, name));
+}
+
+std::shared_ptr<Interface> Interface::get_or_create(const std::string& name)
+{
+    auto index = if_nametoindex(name.c_str());
+
+    if (index == 0)
+        throw std::system_error(errno, std::generic_category(), "Interface::get_or_create(name)");
+
+    return std::move(get_or_create(index, name));
+}
+
+std::shared_ptr<Interface> Interface::get_or_create(unsigned int index, const std::string& name)
+{
+    auto it = std::find_if(interfaces.cbegin(), interfaces.cend(),
+            [&](const std::weak_ptr<Interface>& ptr) {
+                auto iface = ptr.lock();
+                return iface != nullptr && (iface->_index == index || iface->_name == name);
+            });
+
+    if (it != interfaces.cend())
+        // TODO: Make sure both index and name matches!
+        return it->lock();
+
+    auto iface = std::make_shared<Interface>(index, name);
+    interfaces.push_back(iface);
+    return std::move(iface);
+}
+
+Interface::Interface(unsigned int index, const std::string& name)
+        : _index(index), _name(name), _icmp6_socket {}, _packet_socket {}
+{
+    Logger::debug() << "Interface::Interface()";
 }
 
 Interface::~Interface()
 {
     Logger::debug() << "Interface::~Interface()";
-
-    interfaces.remove_if([&](Interface& iface) { return &iface == this; });
 
     if (_packet_socket) {
         if (_prev_allmulti >= 0)
@@ -72,37 +104,16 @@ Interface::~Interface()
     }
 }
 
-std::shared_ptr<Interface> Interface::open_pfd(const std::string& name, bool promisc)
+void Interface::ensure_packet_socket(bool promisc)
 {
-    auto it = _map.find(name);
+    if (_packet_socket)
+        return;
 
-    std::shared_ptr<Interface> iface;
-
-    if (it != _map.end() && (iface = it->second.lock())) {
-        if (iface->_packet_socket)
-            return iface;
-    }
-    else
-        iface = open_ifd(name);
-
-    if (!iface)
-        return {};
+    ensure_icmp6_socket();
 
     auto socket = std::make_unique<Socket>(PF_PACKET, SOCK_RAW, htons(ETH_P_IPV6));
-
-    sockaddr_ll lladdr {};
-    lladdr.sll_family = AF_PACKET;
-    lladdr.sll_protocol = htons(ETH_P_IPV6);
-
-    if (!(lladdr.sll_ifindex = if_nametoindex(name.c_str()))) {
-        Logger::error() << "Failed to determine interface index for '" << name << "'";
-        return {};
-    }
-
-    if (!socket->bind(lladdr)) {
-        Logger::error() << "Failed to bind to interface '" << name << "'";
-        return {};
-    }
+    socket->handler(std::bind(&Interface::packet_handler, this, std::placeholders::_1));
+    socket->bind((sockaddr_ll) { AF_PACKET, htons(ETH_P_IPV6), _index });
 
     // Set up filter.
 
@@ -131,75 +142,43 @@ std::shared_ptr<Interface> Interface::open_pfd(const std::string& name, bool pro
             filter
     };
 
-    if (!socket->setsockopt(SOL_SOCKET, SO_ATTACH_FILTER, fprog)) {
-        Logger::error() << "Failed to set filter: " << Logger::err();
-        return std::shared_ptr<Interface>();
-    }
+    socket->setsockopt(SOL_SOCKET, SO_ATTACH_FILTER, fprog);
 
-    socket->handler([iface](Socket& socket) { iface->packet_handler(); });
-
-    iface->_packet_socket = std::move(socket);
-    iface->_prev_allmulti = iface->allmulti();
-    iface->_prev_promisc = promisc ? iface->promisc() : -1;
-
-    return iface;
+    _packet_socket = std::move(socket);
+    _prev_allmulti = allmulti();
+    _prev_promisc = promisc ? this->promisc() : -1;
 }
 
-std::shared_ptr<Interface> Interface::open_ifd(const std::string& name)
+void Interface::ensure_icmp6_socket()
 {
-    auto it = _map.find(name);
-
-    std::shared_ptr<Interface> iface {};
-
-    if ((it != _map.end()) && (iface = it->second.lock()) && iface->_icmp6_socket)
-        return iface;
-
-    assert(!iface);
+    if (_icmp6_socket)
+        return;
 
     auto socket = std::make_unique<Socket>(PF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
-
-    if (!socket) {
-        Logger::error() << "Unable to create socket";
-        return {};
-    }
+    socket->handler(std::bind(&Interface::icmp6_handler, this, std::placeholders::_1));
 
     // Bind to the specified interface.
 
     ifreq ifr {};
-    strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+    strncpy(ifr.ifr_name, _name.c_str(), IFNAMSIZ - 1);
     ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 
-    if (!socket->setsockopt(SOL_SOCKET, SO_BINDTODEVICE, ifr)) {
-        Logger::error() << "Failed to bind to interface '" << name << "'";
-        return {};
-    }
+    socket->setsockopt(SOL_SOCKET, SO_BINDTODEVICE, ifr);
 
     // Detect the link-layer address.
 
     ifr = {};
-    strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
+    strncpy(ifr.ifr_name, _name.c_str(), IFNAMSIZ - 1);
     ifr.ifr_name[IFNAMSIZ - 1] = '\0';
 
-    if (!socket->ioctl(SIOCGIFHWADDR, &ifr)) {
-        Logger::error() << "Failed to detect link-layer address for interface '" << name << "'";
-        return {};
-    }
+    socket->ioctl(SIOCGIFHWADDR, &ifr);
 
     Logger::debug() << "hwaddr=" << ether_ntoa((const struct ether_addr*) &ifr.ifr_hwaddr.sa_data);
 
     // Set max hops.
 
-    int hops = 255;
-
-    if (!socket->setsockopt(IPPROTO_IPV6, IPV6_MULTICAST_HOPS, hops)) {
-        Logger::error() << "Interface::open_ifd() failed IPV6_MULTICAST_HOPS";
-        return {};
-    }
-
-    if (!socket->setsockopt(IPPROTO_IPV6, IPV6_UNICAST_HOPS, hops)) {
-        Logger::error() << "Interface::open_ifd() failed IPV6_UNICAST_HOPS";
-        return {};
-    }
+    socket->setsockopt(IPPROTO_IPV6, IPV6_MULTICAST_HOPS, 255);
+    socket->setsockopt(IPPROTO_IPV6, IPV6_UNICAST_HOPS, 255);
 
     // Set up filter.
 
@@ -207,23 +186,10 @@ std::shared_ptr<Interface> Interface::open_ifd(const std::string& name)
     ICMP6_FILTER_SETBLOCKALL(&filter);
     ICMP6_FILTER_SETPASS(ND_NEIGHBOR_ADVERT, &filter);
 
-    if (!socket->setsockopt(IPPROTO_ICMPV6, ICMP6_FILTER, filter)) {
-        Logger::error() << "Failed to set filter";
-        return std::shared_ptr<Interface>();
-    }
+    socket->setsockopt(IPPROTO_ICMPV6, ICMP6_FILTER, filter);
 
-    // Set up an instance of 'iface'.
-
-    iface.reset(new Interface());
-    iface->_icmp6_socket->handler([iface](Socket& socket) { iface->icmp6_handler(); });
-    _map[name] = iface;
-
-    iface->_name = name;
-    iface->_self = iface;
-    iface->_icmp6_socket = std::move(socket);
-    iface->hwaddr = *(ether_addr*) ifr.ifr_hwaddr.sa_data;
-
-    return iface;
+    hwaddr = *reinterpret_cast<ether_addr*>(ifr.ifr_hwaddr.sa_data);
+    _icmp6_socket = std::move(socket);
 }
 
 ssize_t Interface::read_solicit(Address& saddr, Address& daddr, Address& taddr)
@@ -280,8 +246,7 @@ ssize_t Interface::write_solicit(const Address& taddr)
     daddr.addr().s6_addr[14] = taddr.c_addr().s6_addr[14];
     daddr.addr().s6_addr[15] = taddr.c_addr().s6_addr[15];
 
-    Logger::debug() << "iface::write_solicit() taddr=" << taddr.to_string()
-                    << ", daddr=" << daddr.to_string();
+    Logger::debug() << "iface::write_solicit() taddr=" << taddr.to_string() << ", daddr=" << daddr.to_string();
 
     return _icmp6_socket->sendmsg(daddr, buf, sizeof(nd_neighbor_solicit) + sizeof(nd_opt_hdr) + 6);
 }
@@ -372,11 +337,11 @@ void Interface::handle_reverse_advert(const Address& saddr, const std::string& i
     if (!saddr.is_unicast())
         return;
 
-    Logger::debug() << "proxy::handle_reverse_advert()";
+    Logger::debug() << "Interface::handle_reverse_advert()";
 
     // Loop through all the parents that forward new NDP soliciation requests to this interface
     for (Proxy& proxy : _parents) {
-        if (!!proxy.iface())
+        if (proxy.iface())
             continue;
 
         // Setup the reverse path on any proxies that are dealing
@@ -391,7 +356,7 @@ void Interface::handle_reverse_advert(const Address& saddr, const std::string& i
     }
 }
 
-void Interface::packet_handler()
+void Interface::packet_handler(Socket&)
 {
     for (;;) {
         Address saddr, daddr, taddr;
@@ -425,7 +390,7 @@ void Interface::packet_handler()
     }
 }
 
-void Interface::icmp6_handler()
+void Interface::icmp6_handler(Socket&)
 {
     for (;;) {
         Address saddr, taddr;
@@ -475,10 +440,7 @@ int Interface::allmulti(bool state)
     ifreq ifr {};
     strncpy(ifr.ifr_name, _name.c_str(), IFNAMSIZ);
 
-    if (!_packet_socket->ioctl(SIOCGIFFLAGS, &ifr)) {
-        Logger::error() << "Failed to get ALLMULTI: " << Logger::err();
-        return -1;
-    }
+    _packet_socket->ioctl(SIOCGIFFLAGS, &ifr);
 
     auto old_state = (ifr.ifr_flags & IFF_ALLMULTI) != 0;
 
@@ -490,26 +452,19 @@ int Interface::allmulti(bool state)
     else
         ifr.ifr_flags &= ~IFF_ALLMULTI;
 
-    if (!_packet_socket->ioctl(SIOCSIFFLAGS, &ifr)) {
-        Logger::error() << "Failed to set ALLMULTI: " << Logger::err();
-        return -1;
-    }
+    _packet_socket->ioctl(SIOCSIFFLAGS, &ifr);
 
     return old_state;
 }
 
 int Interface::promisc(bool state)
 {
-
     Logger::debug() << "Interface::promisc() state=" << state << ", _name=\"" << _name << "\"";
 
     ifreq ifr {};
     strncpy(ifr.ifr_name, _name.c_str(), IFNAMSIZ);
 
-    if (!_packet_socket->ioctl(SIOCGIFFLAGS, &ifr)) {
-        Logger::error() << "Failed to get PROMISC: " << Logger::err();
-        return -1;
-    }
+    _packet_socket->ioctl(SIOCGIFFLAGS, &ifr);
 
     int old_state = (ifr.ifr_flags & IFF_PROMISC) != 0;
 
@@ -521,10 +476,7 @@ int Interface::promisc(bool state)
     else
         ifr.ifr_flags &= ~IFF_PROMISC;
 
-    if (!_packet_socket->ioctl(SIOCSIFFLAGS, &ifr)) {
-        Logger::error() << "Failed to set PROMISC: " << Logger::err();
-        return -1;
-    }
+    _packet_socket->ioctl(SIOCSIFFLAGS, &ifr);
 
     return old_state;
 }

@@ -45,12 +45,13 @@ public:
 
     void handler(SocketHandler handler, void* userdata = nullptr);
 
-    bool ioctl(unsigned long request, void* data) const;
+    void ioctl(unsigned long request, void* data) const;
 
     template<typename T>
-    bool bind(const T& sa) const
+    void bind(const T& sa) const
     {
-        return ::bind(_fd, (const sockaddr*) &sa, sizeof(T)) >= 0;
+        if (::bind(_fd, (const sockaddr*) &sa, sizeof(T)) != 0)
+            throw std::system_error(errno, std::generic_category(), "Socket::bind()");
     }
 
     template<typename T>
@@ -59,7 +60,10 @@ public:
         assert(msg != nullptr);
         iovec iov = { msg, size };
         msghdr mhdr = { &sa, sizeof(sa), &iov, 1 };
-        return ::recvmsg(_fd, &mhdr, wait ? 0 : MSG_DONTWAIT);
+        auto len = ::recvmsg(_fd, &mhdr, wait ? 0 : MSG_DONTWAIT);
+        if (len < 0 && errno != EAGAIN)
+            throw std::system_error(errno, std::generic_category(), "Socket::recvmsg()");
+        return len;
     }
 
     template<typename T>
@@ -68,13 +72,17 @@ public:
         assert(msg != nullptr);
         iovec iov = { (void*) msg, size };
         msghdr mhdr = { (void*) &sa, sizeof(sa), &iov, 1, nullptr, 0, 0 };
-        return ::sendmsg(_fd, &mhdr, wait ? 0 : MSG_DONTWAIT);
+        auto len = ::sendmsg(_fd, &mhdr, wait ? 0 : MSG_DONTWAIT);
+        if (len < 0 && errno != EAGAIN)
+            throw std::system_error(errno, std::generic_category(), "Socket::recvmsg()");
+        return len;
     }
 
     template<typename T>
-    bool setsockopt(int level, int optname, const T& val) const
+    void setsockopt(int level, int optname, const T& val) const
     {
-        return ::setsockopt(_fd, level, optname, &val, sizeof(val)) == 0;
+        if (::setsockopt(_fd, level, optname, &val, sizeof(val)) != 0)
+            throw std::system_error(errno, std::generic_category(), "Socket::setsockopt()");
     }
 };
 

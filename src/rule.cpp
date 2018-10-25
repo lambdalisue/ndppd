@@ -27,16 +27,16 @@
 NDPPD_NS_BEGIN
 
 Rule::Rule(Proxy& proxy, const Cidr& cidr, const std::shared_ptr<Interface>& iface)
-        : _proxy(proxy), _cidr(cidr), _iface(iface), _aut(false)
+        : _proxy(proxy), _cidr(cidr), _iface(iface), _auto(false)
 {
     Logger::debug() << "Rule::Rule() if=" << proxy.iface()->name() << ", slave=" << iface->name() << ", cidr=" << cidr;
 }
 
-Rule::Rule(Proxy& proxy, const Cidr& cidr, bool aut)
-        : _proxy(proxy), _cidr(cidr), _iface {}, _aut(aut)
+Rule::Rule(Proxy& proxy, const Cidr& cidr, bool auto_)
+        : _proxy(proxy), _cidr(cidr), _iface {}, _auto(auto_)
 {
     Logger::debug() << "Rule::Rule() if=" << proxy.iface()->name() << ", cidr=" << cidr
-                    << ", auto=" << (aut ? "yes" : "no");
+                    << ", auto=" << (auto_ ? "yes" : "no");
 }
 
 const Cidr& Rule::cidr() const
@@ -51,7 +51,7 @@ const std::shared_ptr<ndppd::Interface>& Rule::iface() const
 
 bool Rule::is_auto() const
 {
-    return _aut;
+    return _auto;
 }
 
 NDPPD_NS_END
