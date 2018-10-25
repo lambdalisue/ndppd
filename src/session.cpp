@@ -39,55 +39,34 @@ void Session::update_all(int elapsed_time)
         switch (session._status) {
 
         case Session::WAITING:
+        case Session::RENEWING:
             if (session._fails < session._retries) {
-                Logger::debug() << "session will keep trying [taddr=" << session._taddr << "]";
-
+                Logger::debug() << "Session still waiting (taddr=" << session._taddr << ")";
                 session._ttl = session._proxy.timeout;
                 session._fails++;
-
-                // Send another solicit
                 session.send_solicit();
             }
             else {
-
                 Logger::debug() << "session is now invalid [taddr=" << session._taddr << "]";
-
                 session._status = Session::INVALID;
                 session._ttl = session._proxy.timeout;
             }
             break;
 
-        case Session::RENEWING:
-            Logger::debug() << "session is became invalid [taddr=" << session._taddr << "]";
-
-            if (session._fails < session._retries) {
-                session._ttl = session._proxy.timeout;
-                session._fails++;
-
-                // Send another solicit
-                session.send_solicit();
-            }
-            else
-                session._proxy.remove_session(session);
-            break;
-
         case Session::VALID:
-            if (session.touched() || session.keepalive()) {
+            if (session.keepalive()) {
                 Logger::debug() << "session is renewing [taddr=" << session._taddr << "]";
                 session._status = Session::RENEWING;
                 session._ttl = session._proxy.timeout;
                 session._fails = 0;
                 session._touched = false;
-
-                // Send another solicit to make sure the route is still valid
                 session.send_solicit();
             }
-            else
-                session._proxy.remove_session(session);
             break;
 
         default:
             session._proxy.remove_session(session);
+            break;
         }
     }
 }
@@ -96,7 +75,7 @@ Session::Session(Proxy& proxy, const Address& taddr, bool autowire, bool keepali
         : _proxy(proxy), _taddr(taddr), _autowire(autowire), _keepalive(keepalive), _retries(retries),
           _ttl(proxy.ttl), _wired(false), _touched(false)
 {
-    Logger::debug() << "session::create() pr=" << Logger::format("%x", &proxy)
+    Logger::debug() << "Session::create() pr=" << Logger::format("%x", &proxy)
                     << ", proxy=" << (proxy.iface() ? proxy.iface()->name() : "null")
                     << ", taddr=" << taddr << " =" << Logger::format("%x", this);
 
@@ -106,15 +85,20 @@ Session::Session(Proxy& proxy, const Address& taddr, bool autowire, bool keepali
 Session::~Session()
 {
     Logger::debug() << "session::~session() this=" << Logger::format("%x", this);
-    sessions.remove_if([&](std::reference_wrapper<Session> session) { return this == &session.get(); });
+
+    sessions.remove(*this);
+
+    for (const auto& iface : _ifaces)
+        iface->sessions.remove(std::ref(*this));
 }
 
-void Session::add_iface(const std::shared_ptr<Interface>& ifa)
+void Session::add_iface(const std::shared_ptr<Interface>& iface)
 {
-    if (std::find(_ifaces.begin(), _ifaces.end(), ifa) != _ifaces.end())
+    if (std::find(_ifaces.begin(), _ifaces.end(), iface) != _ifaces.end())
         return;
 
-    _ifaces.push_back(ifa);
+    _ifaces.push_back(iface);
+    iface->sessions.push_back(std::ref(*this));
 }
 
 void Session::add_pending(const Address& addr)
@@ -124,24 +108,11 @@ void Session::add_pending(const Address& addr)
 
 void Session::send_solicit()
 {
-    Logger::debug() << "session::send_solicit() (_ifaces.size() = " << _ifaces.size() << ")";
+    Logger::debug() << "Session::send_solicit() (_ifaces.size() = " << _ifaces.size() << ")";
 
-    for (auto& iface : _ifaces) {
+    for (const auto& iface : _ifaces) {
         Logger::debug() << " - " << iface->name();
         iface->write_solicit(_taddr);
-    }
-}
-
-void Session::touch()
-{
-    if (!_touched) {
-        _touched = true;
-
-        if (status() == Session::WAITING || status() == Session::INVALID) {
-            _ttl = _proxy.timeout;
-            Logger::debug() << "session is now probing [taddr=" << _taddr << "]";
-            send_solicit();
-        }
     }
 }
 
@@ -150,34 +121,24 @@ void Session::send_advert(const Address& daddr)
     _proxy.iface()->write_advert(daddr, _taddr, _proxy.router);
 }
 
-void Session::handle_advert(const Address& saddr, const std::string& ifname, bool use_via)
-{
-    if (_autowire && _status == WAITING) {
-        // handle_auto_wire(saddr, ifname, use_via);
-    }
-
-    handle_advert();
-}
-
 void Session::handle_advert()
 {
-    Logger::debug() << "session::handle_advert() taddr=" << _taddr << ", ttl=" << _proxy.ttl;
+    Logger::debug() << "Session::handle_advert() taddr=" << _taddr << ", ttl=" << _proxy.ttl;
 
     if (_status != VALID) {
         _status = VALID;
-        Logger::debug() << "session is active [taddr=" << _taddr << "]";
+        Logger::debug() << "Session became active (taddr=" << _taddr << ")";
     }
 
     _ttl = _proxy.ttl;
     _fails = 0;
 
-    if (!_pending.empty()) {
-        for (const auto& address : _pending) {
-            Logger::debug() << " - forward to " << address;
-            send_advert(address);
-        }
-        _pending.clear();
+    for (const auto& address : _pending) {
+        Logger::debug() << " - Notify " << address;
+        send_advert(address);
     }
+
+    _pending.clear();
 }
 
 const Address& Session::taddr() const

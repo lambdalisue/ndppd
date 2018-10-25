@@ -74,8 +74,6 @@ public:
 
     void handle_advert(const Address& saddr, const std::string& ifname, bool use_via);
 
-    void touch();
-
     void send_advert(const Address& daddr);
 
     void send_solicit();

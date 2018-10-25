@@ -51,19 +51,17 @@ public:
 
     Proxy(const std::shared_ptr<Interface>& iface, bool promisc);
 
+    ~Proxy();
+
     Session* find_or_create_session(const Address& taddr);
 
-    void handle_advert(const Address& saddr, const Address& taddr, const std::string& ifname, bool use_via);
-
-    void handle_stateless_advert(const Address& saddr, const Address& taddr, const std::string& ifname, bool use_via);
-
-    void handle_solicit(const Address& saddr, const Address& taddr, const std::string& ifname);
+    void handle_solicit(const Address& saddr, const Address& taddr);
 
     void remove_session(Session& session);
 
-    Rule& add_rule(const Cidr& cidr, const std::shared_ptr<Interface>& iface, bool autovia);
+    Rule& add_rule(const Cidr& cidr, const std::shared_ptr<Interface>& iface);
 
-    Rule& add_rule(const Cidr& cidr, bool aut = false);
+    Rule& add_rule(const Cidr& cidr, bool auto_ = false);
 
     const std::shared_ptr<Interface>& iface() const;
 

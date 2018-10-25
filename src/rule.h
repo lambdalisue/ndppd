@@ -35,11 +35,13 @@ class Proxy;
 
 class Rule {
 public:
-    bool autovia;
-
     Rule(Proxy& proxy, const Cidr& cidr, const std::shared_ptr<Interface>& ifa);
 
-    Rule(Proxy& proxy, const Cidr& cidr, bool stc = true);
+    Rule(Proxy& proxy, const Cidr& cidr, bool auto_ = true);
+
+    ~Rule();
+
+    Proxy& proxy() const;
 
     const Cidr& cidr() const;
 

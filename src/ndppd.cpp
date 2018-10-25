@@ -193,17 +193,10 @@ static bool configure(std::shared_ptr<Config>& cf)
 
             Cidr addr(*ru_cf);
 
-            bool autovia = false;
-            if (!(x_cf = ru_cf->find("autovia")))
-                autovia = false;
-            else
-                autovia = *x_cf;
-
             if (x_cf = ru_cf->find("iface")) {
                 auto iface = Interface::get_or_create((const std::string&) *x_cf);
                 iface->ensure_icmp6_socket();
-                iface->add_parent(proxy);
-                proxy.add_rule(addr, iface, autovia);
+                proxy.add_rule(addr, iface);
             }
             else if (ru_cf->find("auto"))
                 proxy.add_rule(addr, true);
@@ -211,39 +204,6 @@ static bool configure(std::shared_ptr<Config>& cf)
                 proxy.add_rule(addr, false);
         }
     }
-
-    // Print out all the topology
-    /*
-    for (Interface& iface : interfaces) {
-        std::shared_ptr<Interface> ifa = i_it.second.lock();
-
-        Logger::debug() << "iface " << ifa->name() << " {";
-
-        for (Proxy& proxy : ifa->serves()) {
-            Logger::debug() << "  " << "proxy " << Logger::format("%x", &proxy) << " {";
-
-            for (auto& rule : proxy.rules()) {
-                Logger::debug() << "    " << "rule " << Logger::format("%x", rule.get()) << " {";
-                Logger::debug() << "      " << "taddr " << rule->cidr() << ";";
-                if (rule->is_auto())
-                    Logger::debug() << "      " << "auto;";
-                else if (!rule->iface())
-                    Logger::debug() << "      " << "static;";
-                else
-                    Logger::debug() << "      " << "iface " << rule->iface()->name() << ";";
-                Logger::debug() << "    }";
-            }
-
-            Logger::debug() << "  }";
-        }
-
-        Logger::debug() << "  " << "parents {";
-        for (Proxy& proxy : ifa->parents())
-            Logger::debug() << "    " << "parent " << Logger::format("%x", &proxy) << ";";
-
-        Logger::debug() << "  }";
-        Logger::debug() << "}";
-    }*/
 
     return true;
 }
@@ -338,10 +298,7 @@ int main(int argc, char* argv[], char* env[])
     Netlink::load_local_ips();
 
     while (running) {
-        if (!Socket::poll_all()) {
-            Logger::error() << "Failed to poll";
-            break;
-        }
+        Socket::poll_all();
 
         int elapsed_time;
         gettimeofday(&t2, nullptr);

@@ -56,7 +56,7 @@ static void handle_address(nlmsghdr* nlh)
                 continue;
 
             local_addresses.insert(NetlinkAddress(address, data->ifa_index));
-            Logger::info() << "Registered local address " << address.to_string();
+            Logger::info() << "Registered local address " << address << " index " << data->ifa_index;
         }
     }
 }

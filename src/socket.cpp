@@ -45,7 +45,7 @@ std::vector<pollfd> pollfds;
 std::list<std::reference_wrapper<Socket>> sockets;
 }
 
-bool Socket::poll_all()
+void Socket::poll_all()
 {
     if (pollfds_dirty) {
         pollfds.resize(sockets.size());
@@ -58,8 +58,11 @@ bool Socket::poll_all()
         pollfds_dirty = false;
     }
 
+    if (pollfds.empty())
+        return;
+
     if (::poll(&pollfds[0], pollfds.size(), 50) < 0)
-        return false;
+        throw std::system_error(errno, std::generic_category(), "Socket::poll_all() [poll]");
 
     for (auto pollfd : pollfds) {
         if (pollfd.revents & POLLIN) {
@@ -73,8 +76,6 @@ bool Socket::poll_all()
             }
         }
     }
-
-    return true;
 }
 
 Socket::Socket(int domain, int type, int protocol)

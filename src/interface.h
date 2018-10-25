@@ -36,8 +36,16 @@ class Session;
 
 class Proxy;
 
+class Rule;
+
 class Interface {
 public:
+    std::list<std::reference_wrapper<Proxy>> proxies;
+
+    std::list<std::reference_wrapper<Rule>> rules;
+
+    std::list<std::reference_wrapper<Session>> sessions;
+
     static std::shared_ptr<Interface> get_or_create(const std::string& name);
 
     static std::shared_ptr<Interface> get_or_create(unsigned int index);
@@ -65,24 +73,8 @@ public:
     // Reads a NB_NEIGHBOR_ADVERT message from the _ifd socket;
     ssize_t read_advert(Address& saddr, Address& taddr);
 
-    bool handle_local(const Address& source, const Address& target);
-
-    bool is_local(const Address& addr);
-
-    void handle_reverse_advert(const Address& saddr, const std::string& ifname);
-
     // Returns the name of the interface.
     const std::string& name() const;
-
-    void add_serves(Proxy& proxy);
-
-    void add_parent(Proxy& parent);
-
-    static std::map<std::string, std::weak_ptr<Interface> > _map;
-
-    const Range<std::list<std::reference_wrapper<Proxy>>::const_iterator> parents() const;
-
-    const Range<std::list<std::reference_wrapper<Proxy>>::const_iterator> serves() const;
 
 private:
     int _index;
@@ -105,7 +97,6 @@ private:
 
     // Previous state of PROMISC for the interface
     int _prev_promisc;
-
 
     // List of proxies that will respond to neighbor solicitation messages.
     std::list<std::reference_wrapper<Proxy>> _serves;

@@ -46,7 +46,7 @@
 NDPPD_NS_BEGIN
 
 namespace {
-std::list<std::weak_ptr<Interface>> interfaces;
+std::list<std::weak_ptr<Interface>> g_interfaces;
 }
 
 std::shared_ptr<Interface> Interface::get_or_create(unsigned int index)
@@ -71,18 +71,18 @@ std::shared_ptr<Interface> Interface::get_or_create(const std::string& name)
 
 std::shared_ptr<Interface> Interface::get_or_create(unsigned int index, const std::string& name)
 {
-    auto it = std::find_if(interfaces.cbegin(), interfaces.cend(),
+    auto it = std::find_if(g_interfaces.cbegin(), g_interfaces.cend(),
             [&](const std::weak_ptr<Interface>& ptr) {
                 auto iface = ptr.lock();
                 return iface != nullptr && (iface->_index == index || iface->_name == name);
             });
 
-    if (it != interfaces.cend())
+    if (it != g_interfaces.cend())
         // TODO: Make sure both index and name matches!
         return it->lock();
 
     auto iface = std::make_shared<Interface>(index, name);
-    interfaces.push_back(iface);
+    g_interfaces.push_back(iface);
     return std::move(iface);
 }
 
@@ -211,10 +211,6 @@ ssize_t Interface::read_solicit(Address& saddr, Address& daddr, Address& taddr)
     daddr = Address(ip6h.ip6_dst);
     saddr = Address(ip6h.ip6_src);
 
-    // Ignore packets sent from this machine
-    if (Interface::is_local(saddr))
-        return 0;
-
     Logger::debug() << "Interface::read_solicit() saddr=" << saddr.to_string()
                     << ", daddr=" << daddr.to_string() << ", taddr=" << taddr.to_string() << ", len=" << len;
 
@@ -233,20 +229,17 @@ ssize_t Interface::write_solicit(const Address& taddr)
     opt.nd_opt_type = ND_OPT_SOURCE_LINKADDR;
     opt.nd_opt_len = 1;
 
-    memcpy(buf + sizeof(nd_neighbor_solicit) + sizeof(nd_opt_hdr), &hwaddr, 6);
+    *reinterpret_cast<ether_addr*>(buf + sizeof(nd_neighbor_solicit) + sizeof(nd_opt_hdr)) = hwaddr;
 
     // FIXME: Alright, I'm lazy.
     static Address multicast("ff02::1:ff00:0000");
 
-    Address daddr;
-
-    daddr = multicast;
-
+    Address daddr(multicast);
     daddr.addr().s6_addr[13] = taddr.c_addr().s6_addr[13];
     daddr.addr().s6_addr[14] = taddr.c_addr().s6_addr[14];
     daddr.addr().s6_addr[15] = taddr.c_addr().s6_addr[15];
 
-    Logger::debug() << "iface::write_solicit() taddr=" << taddr.to_string() << ", daddr=" << daddr.to_string();
+    Logger::debug() << "Interface::write_solicit() taddr=" << taddr.to_string() << ", daddr=" << daddr.to_string();
 
     return _icmp6_socket->sendmsg(daddr, buf, sizeof(nd_neighbor_solicit) + sizeof(nd_opt_hdr) + 6);
 }
@@ -255,19 +248,19 @@ ssize_t Interface::write_advert(const Address& daddr, const Address& taddr, bool
 {
     char buf[128] {};
 
-    auto& na = *(nd_neighbor_advert*) &buf[0];
+    auto& na = *reinterpret_cast<nd_neighbor_advert*>(buf);
     na.nd_na_type = ND_NEIGHBOR_ADVERT;
     na.nd_na_flags_reserved = static_cast<uint32_t>((daddr.is_multicast() ? 0 : ND_NA_FLAG_SOLICITED) |
                                                     (router ? ND_NA_FLAG_ROUTER : 0));
     na.nd_na_target = taddr.c_addr();
 
-    auto& opt = *(nd_opt_hdr*) &buf[sizeof(nd_neighbor_advert)];
+    auto& opt = *reinterpret_cast<nd_opt_hdr*>(buf + sizeof(nd_neighbor_advert));
     opt.nd_opt_type = ND_OPT_TARGET_LINKADDR;
     opt.nd_opt_len = 1;
 
-    *(ether_addr*) (buf + sizeof(nd_neighbor_advert) + sizeof(nd_opt_hdr)) = hwaddr;
+    *reinterpret_cast<ether_addr*>(buf + sizeof(nd_neighbor_advert) + sizeof(nd_opt_hdr)) = hwaddr;
 
-    Logger::debug() << "iface::write_advert() daddr=" << daddr.to_string()
+    Logger::debug() << "Interface::write_advert() daddr=" << daddr.to_string()
                     << ", taddr=" << taddr.to_string();
 
     return _icmp6_socket->sendmsg(daddr, buf, sizeof(nd_neighbor_advert) + sizeof(nd_opt_hdr) + 6);
@@ -287,11 +280,6 @@ ssize_t Interface::read_advert(Address& saddr, Address& taddr)
 
     saddr = Address(t_saddr.sin6_addr);
 
-    // Ignore packets sent from this machine
-    if (Interface::is_local(saddr)) {
-        return 0;
-    }
-
     if (((icmp6_hdr*) msg)->icmp6_type != ND_NEIGHBOR_ADVERT)
         return -1;
 
@@ -303,58 +291,6 @@ ssize_t Interface::read_advert(Address& saddr, Address& taddr)
     return len;
 }
 
-bool Interface::is_local(const Address& addr)
-{
-    return Netlink::is_local(addr);
-}
-
-bool Interface::handle_local(const Address& source, const Address& target)
-{
-    for (const auto& nla : Netlink::local_addresses()) {
-        if (nla.address() != target)
-            continue;
-
-        for (const auto& proxy : Proxy::proxies()) {
-            if (proxy->iface().get() != this)
-                continue;
-
-            for (const auto& rule : proxy->rules()) {
-                if (rule->iface()->_index == nla.index()) {
-                    Logger::debug() << "Interface::handle_local() found local taddr=" << target;
-                    write_advert(source, target, false);
-                    return true;
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
-void Interface::handle_reverse_advert(const Address& saddr, const std::string& ifname)
-{
-    if (!saddr.is_unicast())
-        return;
-
-    Logger::debug() << "Interface::handle_reverse_advert()";
-
-    // Loop through all the parents that forward new NDP soliciation requests to this interface
-    for (Proxy& proxy : _parents) {
-        if (proxy.iface())
-            continue;
-
-        // Setup the reverse path on any proxies that are dealing
-        // with the reverse direction (this helps improve connectivity and
-        // latency in a full duplex setup)
-        for (auto& rule : proxy.rules()) {
-            if (rule->cidr() % saddr && rule->iface()->name() == ifname) {
-                Logger::debug() << " - generating artifical advertisement: " << ifname;
-                proxy.handle_stateless_advert(saddr, saddr, ifname, rule->autovia);
-            }
-        }
-    }
-}
-
 void Interface::packet_handler(Socket&)
 {
     for (;;) {
@@ -363,29 +299,11 @@ void Interface::packet_handler(Socket&)
         if (read_solicit(saddr, daddr, taddr) < 0)
             break;
 
-        // Process any local addresses for interfaces that we are proxying
-        if (handle_local(saddr, taddr))
+        if (!saddr.is_unicast() || !daddr.is_multicast())
             continue;
 
-        // We have to handle all the parents who may be interested in
-        // the reverse path towards the one who sent this solicit.
-        // In fact, the parent need to know the source address in order
-        // to respond to NDP Solicitations
-        handle_reverse_advert(saddr, _name);
-
-        // Loop through all the proxies that are using this iface to respond to NDP solicitation requests
-        auto handled = false;
-
-        for (Proxy& proxy : _serves) {
-            // Process the solicitation request by relating it to other
-            // interfaces or lookup up any statics routes we have configured
-            handled = true;
-            proxy.handle_solicit(saddr, taddr, _name);
-        }
-
-        // If it was not handled then write an error message
-        if (!handled)
-            Logger::debug() << " - solicit was ignored";
+        for (Proxy& proxy : proxies)
+            proxy.handle_solicit(saddr, taddr);
     }
 }
 
@@ -397,38 +315,10 @@ void Interface::icmp6_handler(Socket&)
         if (read_advert(saddr, taddr) < 0)
             break;
 
-        bool handled = false;
-
-        for (Proxy& proxy : _parents) {
-            if (!proxy.iface())
-                return;
-
-            // The proxy must have a rule for this interface or it is not meant to receive
-            // any notifications and thus they must be ignored
-            bool autovia = false;
-            bool is_relevant = false;
-
-            for (const auto& rule : proxy.rules()) {
-                if (rule->cidr() % taddr && rule->iface() && rule->iface()->name() == _name) {
-                    is_relevant = true;
-                    autovia = rule->autovia;
-                    break;
-                }
-            }
-
-            if (!is_relevant) {
-                Logger::debug() << "Interface::read_advert() advert is not for " << _name << "...skipping";
-                continue;
-            }
-
-            // Process the NDP advertisement
-            handled = true;
-            proxy.handle_advert(saddr, taddr, _name, autovia);
+        for (Session& session : sessions) {
+            if (session.taddr() == taddr && session.status() == Session::WAITING)
+                session.handle_advert();
         }
-
-        // If it was not handled then write an error message
-        if (!handled)
-            Logger::debug() << " - advert was ignored";
     }
 }
 
@@ -483,26 +373,6 @@ int Interface::promisc(bool state)
 const std::string& Interface::name() const
 {
     return _name;
-}
-
-void Interface::add_serves(Proxy& proxy)
-{
-    _serves.push_back(std::ref(proxy));
-}
-
-void Interface::add_parent(Proxy& proxy)
-{
-    _parents.push_back(std::ref(proxy));
-}
-
-const Range<std::list<std::reference_wrapper<Proxy>>::const_iterator> Interface::parents() const
-{
-    return { _parents.cbegin(), _parents.cend() };
-}
-
-const Range<std::list<std::reference_wrapper<Proxy>>::const_iterator> Interface::serves() const
-{
-    return { _serves.cbegin(), _serves.cend() };
 }
 
 NDPPD_NS_END

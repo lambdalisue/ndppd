@@ -22,4 +22,17 @@
 #define NDPPD_NS_BEGIN  namespace ndppd {
 #define NDPPD_NS_END    }
 
+#include <functional>
+#include <memory>
+
+NDPPD_NS_BEGIN
+
+template <typename T>
+bool operator==(const std::reference_wrapper<T>& left, const std::reference_wrapper<T>& right)
+{
+    return std::addressof(left.get()) == std::addressof(right.get());
+}
+
+NDPPD_NS_END
+
 #endif

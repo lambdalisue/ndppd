@@ -26,14 +26,7 @@
 NDPPD_NS_BEGIN
 
 namespace {
-std::list<std::unique_ptr<Proxy>> l_proxies;
-}
-
-Proxy::Proxy(const std::shared_ptr<Interface>& iface, bool promiscuous)
-        : _iface(iface), router(true), ttl(30000), deadtime(3000), timeout(500), autowire(false),
-          keepalive(true), _promiscuous(promiscuous), retries(3)
-{
-    Logger::debug() << "Proxy::Proxy() if=" << iface->name();
+std::list<std::unique_ptr<Proxy>> g_proxies;
 }
 
 Proxy& Proxy::create(const std::string& ifname, bool promiscuous)
@@ -42,8 +35,21 @@ Proxy& Proxy::create(const std::string& ifname, bool promiscuous)
     iface->ensure_packet_socket(promiscuous);
     auto proxy = std::make_unique<Proxy>(iface, promiscuous);
     auto& ref = *proxy;
-    l_proxies.push_back(std::move(proxy));
+    g_proxies.push_back(std::move(proxy));
     return ref;
+}
+
+Proxy::Proxy(const std::shared_ptr<Interface>& iface, bool promiscuous)
+        : _iface(iface), router(true), ttl(30000), deadtime(3000), timeout(500), autowire(false),
+          keepalive(true), _promiscuous(promiscuous), retries(3)
+{
+    Logger::debug() << "Proxy::Proxy() if=" << iface->name();
+    _iface->proxies.push_back(std::ref(*this));
+}
+
+Proxy::~Proxy()
+{
+    _iface->proxies.remove_if([this](Proxy& proxy) { return &proxy == this; });
 }
 
 Session* Proxy::find_or_create_session(const Address& taddr)
@@ -96,33 +102,7 @@ Session* Proxy::find_or_create_session(const Address& taddr)
     return session.get();
 }
 
-void Proxy::handle_advert(const Address& saddr, const Address& taddr, const std::string& ifname, bool use_via)
-{
-    // If a session exists then process the advert in the context of the session
-    for (auto& session : _sessions) {
-        if ((session->taddr() == taddr))
-            session->handle_advert(saddr, ifname, use_via);
-    }
-}
-
-void Proxy::handle_stateless_advert(const Address& saddr, const Address& taddr,
-        const std::string& ifname, bool use_via)
-{
-    Logger::debug() << "Proxy::handle_stateless_advert() proxy=" << (iface() ? iface()->name() : "null") << ", taddr="
-                    << taddr.to_string() << ", ifname=" << ifname;
-
-    auto session = find_or_create_session(taddr);
-
-    if (!session)
-        return;
-
-    if (autowire && session->status() == Session::WAITING) {
-        // TODO
-        // se->handle_auto_wire(saddr, ifname, use_via);
-    }
-}
-
-void Proxy::handle_solicit(const Address& saddr, const Address& taddr, const std::string& ifname)
+void Proxy::handle_solicit(const Address& saddr, const Address& taddr)
 {
     Logger::debug() << "Proxy::handle_solicit()";
 
@@ -132,13 +112,11 @@ void Proxy::handle_solicit(const Address& saddr, const Address& taddr, const std
     if (!session)
         return;
 
-    // Touching the session will cause an NDP advert to be transmitted to all
-    // the daughters
-    session->touch();
-
     // If our session is confirmed then we can respoond with an advert otherwise
     // subscribe so that if it does become active we can notify everyone
     if (saddr != taddr) {
+        // TODO: saddr != taddr ?
+
         switch (session->status()) {
         case Session::WAITING:
         case Session::INVALID:
@@ -153,10 +131,9 @@ void Proxy::handle_solicit(const Address& saddr, const Address& taddr, const std
     }
 }
 
-Rule& Proxy::add_rule(const Cidr& cidr, const std::shared_ptr<Interface>& iface, bool autovia)
+Rule& Proxy::add_rule(const Cidr& cidr, const std::shared_ptr<Interface>& iface)
 {
     auto rule = std::make_unique<Rule>(*this, cidr, iface);
-    rule->autovia = autovia;
     auto& ref = *rule;
     _rules.push_back(std::move(rule));
     return ref;
@@ -192,7 +169,7 @@ const Range<std::list<std::unique_ptr<Rule> >::const_iterator> Proxy::rules() co
 
 const Range<std::list<std::unique_ptr<Proxy>>::const_iterator> Proxy::proxies()
 {
-    return { l_proxies.cbegin(), l_proxies.cend() };
+    return { g_proxies.cbegin(), g_proxies.cend() };
 }
 
 NDPPD_NS_END

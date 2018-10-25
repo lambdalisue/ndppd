@@ -30,6 +30,7 @@ Rule::Rule(Proxy& proxy, const Cidr& cidr, const std::shared_ptr<Interface>& ifa
         : _proxy(proxy), _cidr(cidr), _iface(iface), _auto(false)
 {
     Logger::debug() << "Rule::Rule() if=" << proxy.iface()->name() << ", slave=" << iface->name() << ", cidr=" << cidr;
+    _iface->rules.push_back(std::ref(*this));
 }
 
 Rule::Rule(Proxy& proxy, const Cidr& cidr, bool auto_)
@@ -37,6 +38,17 @@ Rule::Rule(Proxy& proxy, const Cidr& cidr, bool auto_)
 {
     Logger::debug() << "Rule::Rule() if=" << proxy.iface()->name() << ", cidr=" << cidr
                     << ", auto=" << (auto_ ? "yes" : "no");
+}
+
+Rule::~Rule()
+{
+    if (_iface)
+        _iface->rules.remove_if([this](Rule& rule) { return &rule == this; });
+}
+
+Proxy& Rule::proxy() const
+{
+    return _proxy;
 }
 
 const Cidr& Rule::cidr() const

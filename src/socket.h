@@ -32,7 +32,7 @@ class Socket {
 public:
     std::function<void(Socket&)> handler;
 
-    static bool poll_all();
+    static void poll_all();
 
     Socket(int domain, int type, int protocol);
 
