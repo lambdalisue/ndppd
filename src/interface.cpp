@@ -45,16 +45,24 @@
 
 NDPPD_NS_BEGIN
 
+namespace {
+std::list<std::reference_wrapper<Interface>> interfaces;
+}
+
 std::map<std::string, std::weak_ptr<Interface> > Interface::_map;
 
 Interface::Interface()
         : _icmp6_socket {}, _packet_socket {}, _name {}
 {
+    Logger::debug() << "Interface::Interface() name";
+    interfaces.push_back(std::ref(*this));
 }
 
 Interface::~Interface()
 {
     Logger::debug() << "Interface::~Interface()";
+
+    interfaces.remove_if([&](Interface& iface) { return &iface == this; });
 
     if (_packet_socket) {
         if (_prev_allmulti >= 0)
@@ -284,7 +292,8 @@ ssize_t Interface::write_advert(const Address& daddr, const Address& taddr, bool
 
     auto& na = *(nd_neighbor_advert*) &buf[0];
     na.nd_na_type = ND_NEIGHBOR_ADVERT;
-    na.nd_na_flags_reserved = (daddr.is_multicast() ? 0 : ND_NA_FLAG_SOLICITED) | (router ? ND_NA_FLAG_ROUTER : 0);
+    na.nd_na_flags_reserved = static_cast<uint32_t>((daddr.is_multicast() ? 0 : ND_NA_FLAG_SOLICITED) |
+                                                    (router ? ND_NA_FLAG_ROUTER : 0));
     na.nd_na_target = taddr.c_addr();
 
     auto& opt = *(nd_opt_hdr*) &buf[sizeof(nd_neighbor_advert)];
@@ -367,7 +376,7 @@ void Interface::handle_reverse_advert(const Address& saddr, const std::string& i
 
     // Loop through all the parents that forward new NDP soliciation requests to this interface
     for (Proxy& proxy : _parents) {
-        if (!!proxy.ifa())
+        if (!!proxy.iface())
             continue;
 
         // Setup the reverse path on any proxies that are dealing
@@ -427,7 +436,7 @@ void Interface::icmp6_handler()
         bool handled = false;
 
         for (Proxy& proxy : _parents) {
-            if (!proxy.ifa())
+            if (!proxy.iface())
                 return;
 
             // The proxy must have a rule for this interface or it is not meant to receive

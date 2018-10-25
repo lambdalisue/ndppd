@@ -25,13 +25,13 @@
 NDPPD_NS_BEGIN
 
 namespace {
-std::list<Session*> all_sessions;
+std::list<std::reference_wrapper<Session>> sessions;
 }
 
 void Session::update_all(int elapsed_time)
 {
-    for (auto it = all_sessions.begin(); it != all_sessions.end();) {
-        auto& session = **it++;
+    for (auto it = sessions.begin(); it != sessions.end();) {
+        Session& session = *it++;
 
         if ((session._ttl -= elapsed_time) >= 0)
             continue;
@@ -92,24 +92,21 @@ void Session::update_all(int elapsed_time)
     }
 }
 
-Session::~Session()
-{
-    Logger::debug() << "session::~session() this=" << Logger::format("%x", this);
-
-    if (_wired) {
-        for (auto& _iface : _ifaces) {
-            //handle_auto_unwire(_iface->name());
-        }
-    }
-}
-
 Session::Session(Proxy& proxy, const Address& taddr, bool autowire, bool keepalive, int retries)
         : _proxy(proxy), _taddr(taddr), _autowire(autowire), _keepalive(keepalive), _retries(retries),
           _ttl(proxy.ttl), _wired(false), _touched(false)
 {
     Logger::debug() << "session::create() pr=" << Logger::format("%x", &proxy)
-                    << ", proxy=" << (proxy.ifa() ? proxy.ifa()->name() : "null")
+                    << ", proxy=" << (proxy.iface() ? proxy.iface()->name() : "null")
                     << ", taddr=" << taddr << " =" << Logger::format("%x", this);
+
+    sessions.push_back(std::ref(*this));
+}
+
+Session::~Session()
+{
+    Logger::debug() << "session::~session() this=" << Logger::format("%x", this);
+    sessions.remove_if([&](std::reference_wrapper<Session> session) { return this == &session.get(); });
 }
 
 void Session::add_iface(const std::shared_ptr<Interface>& ifa)
@@ -150,7 +147,7 @@ void Session::touch()
 
 void Session::send_advert(const Address& daddr)
 {
-    _proxy.ifa()->write_advert(daddr, _taddr, _proxy.router);
+    _proxy.iface()->write_advert(daddr, _taddr, _proxy.router);
 }
 
 void Session::handle_advert(const Address& saddr, const std::string& ifname, bool use_via)

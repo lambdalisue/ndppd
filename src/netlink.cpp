@@ -29,8 +29,11 @@
 
 NDPPD_NS_BEGIN
 
-static std::unique_ptr<Socket> _socket;
+namespace {
+static std::unique_ptr<Socket> sockets;
 static std::set<Address> local_addresses;
+}
+
 
 static void handler(Socket& socket)
 {
@@ -59,13 +62,13 @@ static void handle_address(nlmsghdr* nlh)
 
 void Netlink::initialize()
 {
-    _socket = std::make_unique<Socket>(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
-    _socket->bind((sockaddr_nl) { AF_NETLINK, 0, 0, RTMGRP_IPV6_ROUTE | RTMGRP_IPV6_IFADDR });
+    sockets = std::make_unique<Socket>(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+    sockets->bind((sockaddr_nl) { AF_NETLINK, 0, 0, RTMGRP_IPV6_ROUTE | RTMGRP_IPV6_IFADDR });
 }
 
 void Netlink::finalize()
 {
-    _socket.reset();
+    sockets.reset();
 }
 
 const Range<std::set<Address>::const_iterator> Netlink::local_addresses()
@@ -81,13 +84,13 @@ void Netlink::load_local_ips()
     } payload {{ NLMSG_LENGTH(sizeof(rtgenmsg)), RTM_GETADDR, NLM_F_REQUEST | NLM_F_DUMP, 1 },
                { AF_INET6 }};
 
-    if (_socket->sendmsg((sockaddr_nl) { AF_NETLINK }, &payload, sizeof(payload)) < 0)
+    if (sockets->sendmsg((sockaddr_nl) { AF_NETLINK }, &payload, sizeof(payload)) < 0)
         throw std::system_error(errno, std::generic_category());
 
     char buf[1024];
 
     sockaddr_nl sa {};
-    auto len = _socket->recvmsg(sa, buf, sizeof(buf), true);
+    auto len = sockets->recvmsg(sa, buf, sizeof(buf), true);
     if (len < 0)
         throw std::system_error(errno, std::generic_category());
 
@@ -126,13 +129,13 @@ void Netlink::test()
     } payload {{ NLMSG_LENGTH(sizeof(rtgenmsg)), RTM_GETROUTE, NLM_F_REQUEST | NLM_F_DUMP, 1 },
                { AF_INET6 }};
 
-    if (_socket->sendmsg((sockaddr_nl) { AF_NETLINK }, &payload, sizeof(payload)) < 0)
+    if (sockets->sendmsg((sockaddr_nl) { AF_NETLINK }, &payload, sizeof(payload)) < 0)
         throw std::system_error(errno, std::generic_category());
 
     char buf[1024];
 
     sockaddr_nl sa {};
-    auto len = _socket->recvmsg(sa, buf, sizeof(buf), true);
+    auto len = sockets->recvmsg(sa, buf, sizeof(buf), true);
     if (len < 0)
         throw std::system_error(errno, std::generic_category());
 

@@ -26,28 +26,16 @@
 
 NDPPD_NS_BEGIN
 
-bool Rule::_any_aut = false;
-
-bool Rule::_any_iface = false;
-
-bool Rule::_any_static = false;
-
 Rule::Rule(Proxy& proxy, const Cidr& cidr, const std::shared_ptr<Interface>& iface)
         : _proxy(proxy), _cidr(cidr), _iface(iface), _aut(false)
 {
-    _any_iface = true;
-    Logger::debug() << "Rule::Rule() if=" << proxy.ifa()->name() << ", slave=" << iface->name() << ", cidr=" << cidr;
+    Logger::debug() << "Rule::Rule() if=" << proxy.iface()->name() << ", slave=" << iface->name() << ", cidr=" << cidr;
 }
 
 Rule::Rule(Proxy& proxy, const Cidr& cidr, bool aut)
         : _proxy(proxy), _cidr(cidr), _iface {}, _aut(aut)
 {
-    if (_aut)
-        _any_aut = true;
-    else
-        _any_static = true;
-
-    Logger::debug() << "Rule::Rule() if=" << proxy.ifa()->name() << ", cidr=" << cidr
+    Logger::debug() << "Rule::Rule() if=" << proxy.iface()->name() << ", cidr=" << cidr
                     << ", auto=" << (aut ? "yes" : "no");
 }
 
@@ -64,26 +52,6 @@ const std::shared_ptr<ndppd::Interface>& Rule::iface() const
 bool Rule::is_auto() const
 {
     return _aut;
-}
-
-bool Rule::any_auto()
-{
-    return _any_aut;
-}
-
-bool Rule::any_iface()
-{
-    return _any_iface;
-}
-
-bool Rule::any_static()
-{
-    return _any_static;
-}
-
-bool Rule::check(const Address& addr) const
-{
-    return _cidr % addr;
 }
 
 NDPPD_NS_END

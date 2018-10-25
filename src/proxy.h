@@ -37,7 +37,6 @@ class Rule;
 
 class Proxy {
 public:
-    // Act as a router.
     bool router;
     bool autowire;
     int retries;
@@ -64,7 +63,7 @@ public:
 
     Rule& add_rule(const Cidr& cidr, bool aut = false);
 
-    const std::shared_ptr<Interface>& ifa() const;
+    const std::shared_ptr<Interface>& iface() const;
 
     bool promiscuous() const;
 

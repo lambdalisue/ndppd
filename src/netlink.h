@@ -26,6 +26,11 @@
 
 NDPPD_NS_BEGIN
 
+class NetlinkRoute {
+public:
+
+};
+
 class Netlink {
 public:
     static void initialize();

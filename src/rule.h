@@ -43,17 +43,9 @@ public:
 
     const Cidr& cidr() const;
 
-    const std::shared_ptr<Interface> &iface() const;
+    const std::shared_ptr<Interface>& iface() const;
 
     bool is_auto() const;
-
-    bool check(const Address& addr) const;
-
-    static bool any_auto();
-
-    static bool any_static();
-
-    static bool any_iface();
 
 private:
     Proxy& _proxy;
@@ -64,14 +56,6 @@ private:
     Cidr _cidr;
 
     bool _aut;
-
-    static bool _any_aut;
-
-    static bool _any_static;
-
-    static bool _any_iface;
-
-    bool _autovia;
 };
 
 NDPPD_NS_END

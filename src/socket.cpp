@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <cassert>
 #include <vector>
-#include <set>
+#include <list>
 #include <poll.h>
 #include <algorithm>
 #include <iostream>
@@ -42,7 +42,7 @@ NDPPD_NS_BEGIN
 namespace {
 bool pollfds_dirty;
 std::vector<pollfd> pollfds;
-std::set<Socket*> sockets;
+std::list<std::reference_wrapper<Socket>> sockets;
 }
 
 bool Socket::poll_all()
@@ -51,8 +51,8 @@ bool Socket::poll_all()
         pollfds.resize(sockets.size());
 
         std::transform(sockets.cbegin(), sockets.cend(), pollfds.begin(),
-                [](const Socket* socket) {
-                    return (pollfd) { socket->_fd, POLLIN };
+                [](const Socket& socket) {
+                    return (pollfd) { socket._fd, POLLIN };
                 });
 
         pollfds_dirty = false;
@@ -61,12 +61,16 @@ bool Socket::poll_all()
     if (::poll(&pollfds[0], pollfds.size(), 50) < 0)
         return false;
 
-    for (auto it : pollfds) {
-        if (it.revents & POLLIN) {
-            auto s_it = std::find_if(sockets.cbegin(), sockets.cend(),
-                    [it](Socket* socket) { return socket->_fd == it.fd; });
-            if (s_it != sockets.cend() && (*s_it)->_handler)
-                (*s_it)->_handler(**s_it);
+    for (auto pollfd : pollfds) {
+        if (pollfd.revents & POLLIN) {
+            auto it = std::find_if(sockets.cbegin(), sockets.cend(),
+                    [&](Socket& socket) { return socket._fd == pollfd.fd; });
+
+            if (it != sockets.cend()) {
+                Socket& socket = *it;
+                if (socket._handler)
+                    socket._handler(socket);
+            }
         }
     }
 
@@ -77,15 +81,15 @@ Socket::Socket(int domain, int type, int protocol)
         : _handler(nullptr)
 {
     if ((_fd = ::socket(domain, type, protocol)) < 0)
-        throw std::system_error(errno, std::generic_category());
-    sockets.insert(this);
+        throw std::system_error(errno, std::generic_category(), "Socket::Socket()");
+    sockets.push_back(std::ref(*this));
     pollfds_dirty = true;
 }
 
 Socket::~Socket()
 {
     ::close(_fd);
-    sockets.erase(this);
+    sockets.remove_if([&](Socket& socket) { return &socket == this; });
     pollfds_dirty = true;
 }
 

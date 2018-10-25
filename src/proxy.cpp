@@ -106,7 +106,7 @@ void Proxy::handle_advert(const Address& saddr, const Address& taddr, const std:
 void Proxy::handle_stateless_advert(const Address& saddr, const Address& taddr,
         const std::string& ifname, bool use_via)
 {
-    Logger::debug() << "proxy::handle_stateless_advert() proxy=" << (ifa() ? ifa()->name() : "null") << ", taddr="
+    Logger::debug() << "Proxy::handle_stateless_advert() proxy=" << (iface() ? iface()->name() : "null") << ", taddr="
                     << taddr.to_string() << ", ifname=" << ifname;
 
     auto session = find_or_create_session(taddr);
@@ -122,7 +122,7 @@ void Proxy::handle_stateless_advert(const Address& saddr, const Address& taddr,
 
 void Proxy::handle_solicit(const Address& saddr, const Address& taddr, const std::string& ifname)
 {
-    Logger::debug() << "proxy::handle_solicit()";
+    Logger::debug() << "Proxy::handle_solicit()";
 
     // Otherwise find or create a session to scan for this address
     auto session = find_or_create_session(taddr);
@@ -173,7 +173,7 @@ void Proxy::remove_session(Session& session)
     _sessions.remove_if([session](const std::unique_ptr<Session>& ref) { return &session == ref.get(); });
 }
 
-const std::shared_ptr<Interface>& Proxy::ifa() const
+const std::shared_ptr<Interface>& Proxy::iface() const
 {
     return _iface;
 }
