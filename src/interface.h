@@ -107,7 +107,7 @@ private:
     std::list<std::reference_wrapper<Proxy>> _parents;
 
     // The link-layer address of this interface.
-    ether_addr hwaddr;
+    ether_addr _hwaddr;
 
     // Turns on/off ALLMULTI for this interface - returns the previous state or -1 if there was an error.
     int allmulti(bool state = true);

@@ -24,4 +24,14 @@ NetlinkRoute::NetlinkRoute(const ndppd::Cidr& cidr, const std::shared_ptr<ndppd:
 {
 }
 
+const Cidr& NetlinkRoute::cidr() const
+{
+    return _cidr;
+}
+
+const std::shared_ptr<Interface>& NetlinkRoute::iface() const
+{
+    return _iface;
+}
+
 NDPPD_NS_END

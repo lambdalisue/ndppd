@@ -34,7 +34,7 @@ const std::shared_ptr<Interface>& NetlinkAddress::iface() const
     return _iface;
 }
 
-bool NetlinkAddress::operator<(const ndppd::NetlinkAddress& rval) const
+bool NetlinkAddress::operator<(const NetlinkAddress& rval) const
 {
     return _address < rval._address || (_address == rval._address && _iface->index() < rval._iface->index());
 }

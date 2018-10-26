@@ -188,7 +188,7 @@ void Interface::ensure_icmp6_socket()
 
     socket->setsockopt(IPPROTO_ICMPV6, ICMP6_FILTER, filter);
 
-    hwaddr = *reinterpret_cast<ether_addr*>(ifr.ifr_hwaddr.sa_data);
+    _hwaddr = *reinterpret_cast<ether_addr*>(ifr.ifr_hwaddr.sa_data);
     _icmp6_socket = std::move(socket);
 }
 
@@ -223,21 +223,21 @@ ssize_t Interface::write_solicit(const Address& taddr)
 
     auto& ns = *reinterpret_cast<nd_neighbor_solicit*>(buf);
     ns.nd_ns_type = ND_NEIGHBOR_SOLICIT;
-    ns.nd_ns_target = taddr.c_addr();
+    ns.nd_ns_target = taddr.addr;
 
     auto& opt = *reinterpret_cast<nd_opt_hdr*>(buf + sizeof(nd_neighbor_solicit));
     opt.nd_opt_type = ND_OPT_SOURCE_LINKADDR;
     opt.nd_opt_len = 1;
 
-    *reinterpret_cast<ether_addr*>(buf + sizeof(nd_neighbor_solicit) + sizeof(nd_opt_hdr)) = hwaddr;
+    *reinterpret_cast<ether_addr*>(buf + sizeof(nd_neighbor_solicit) + sizeof(nd_opt_hdr)) = _hwaddr;
 
     // FIXME: Alright, I'm lazy.
     static Address multicast("ff02::1:ff00:0000");
 
     Address daddr(multicast);
-    daddr.addr().s6_addr[13] = taddr.c_addr().s6_addr[13];
-    daddr.addr().s6_addr[14] = taddr.c_addr().s6_addr[14];
-    daddr.addr().s6_addr[15] = taddr.c_addr().s6_addr[15];
+    daddr.addr.s6_addr[13] = taddr.addr.s6_addr[13];
+    daddr.addr.s6_addr[14] = taddr.addr.s6_addr[14];
+    daddr.addr.s6_addr[15] = taddr.addr.s6_addr[15];
 
     Logger::debug() << "Interface::write_solicit() taddr=" << taddr.to_string() << ", daddr=" << daddr.to_string();
 
@@ -252,13 +252,13 @@ ssize_t Interface::write_advert(const Address& daddr, const Address& taddr, bool
     na.nd_na_type = ND_NEIGHBOR_ADVERT;
     na.nd_na_flags_reserved = static_cast<uint32_t>((daddr.is_multicast() ? 0 : ND_NA_FLAG_SOLICITED) |
                                                     (router ? ND_NA_FLAG_ROUTER : 0));
-    na.nd_na_target = taddr.c_addr();
+    na.nd_na_target = taddr.addr;
 
     auto& opt = *reinterpret_cast<nd_opt_hdr*>(buf + sizeof(nd_neighbor_advert));
     opt.nd_opt_type = ND_OPT_TARGET_LINKADDR;
     opt.nd_opt_len = 1;
 
-    *reinterpret_cast<ether_addr*>(buf + sizeof(nd_neighbor_advert) + sizeof(nd_opt_hdr)) = hwaddr;
+    *reinterpret_cast<ether_addr*>(buf + sizeof(nd_neighbor_advert) + sizeof(nd_opt_hdr)) = _hwaddr;
 
     Logger::debug() << "Interface::write_advert() daddr=" << daddr.to_string()
                     << ", taddr=" << taddr.to_string();

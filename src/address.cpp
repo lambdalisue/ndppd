@@ -26,52 +26,46 @@
 
 NDPPD_NS_BEGIN
 
-Address::Address() = default;
+Address::Address()
+        : addr {}
+{
+}
 
 Address::Address(const in6_addr& addr)
-        : _addr(addr)
+        : addr(addr)
 {
+
 }
 
 Address::Address(const std::string& address)
 {
-    if (::inet_pton(AF_INET6, address.c_str(), &_addr) <= 0)
+    if (::inet_pton(AF_INET6, address.c_str(), &addr) <= 0)
         throw std::runtime_error("Failed to parse IPv6 address");
-}
-
-const in6_addr& Address::c_addr() const
-{
-    return _addr;
-}
-
-in6_addr& Address::addr()
-{
-    return _addr;
 }
 
 bool Address::is_multicast() const
 {
-    return _addr.s6_addr[0] == 0xff;
+    return addr.s6_addr[0] == 0xff;
 }
 
 bool Address::is_unicast() const
 {
-    return (_addr.s6_addr32[2] != 0 || _addr.s6_addr32[3] != 0) && _addr.s6_addr[0] != 0xff;
+    return (addr.s6_addr32[2] != 0 || addr.s6_addr32[3] != 0) && addr.s6_addr[0] != 0xff;
 }
 
 std::string Address::to_string() const
 {
     char buf[INET6_ADDRSTRLEN];
-    assert(inet_ntop(AF_INET6, &_addr, buf, INET6_ADDRSTRLEN) != nullptr);
+    assert(::inet_ntop(AF_INET6, &addr, buf, INET6_ADDRSTRLEN) != nullptr);
     return buf;
 }
 
 bool Address::operator==(const Address& address) const
 {
-    return _addr.s6_addr32[0] == address._addr.s6_addr32[0] &&
-           _addr.s6_addr32[1] == address._addr.s6_addr32[1] &&
-           _addr.s6_addr32[2] == address._addr.s6_addr32[2] &&
-           _addr.s6_addr32[3] == address._addr.s6_addr32[3];
+    return addr.s6_addr32[0] == address.addr.s6_addr32[0] &&
+           addr.s6_addr32[1] == address.addr.s6_addr32[1] &&
+           addr.s6_addr32[2] == address.addr.s6_addr32[2] &&
+           addr.s6_addr32[3] == address.addr.s6_addr32[3];
 }
 
 bool Address::operator!=(const Address& address) const
@@ -81,12 +75,12 @@ bool Address::operator!=(const Address& address) const
 
 bool Address::operator<(const ndppd::Address& address) const
 {
-    return std::memcmp(&_addr, &address._addr, sizeof(in6_addr)) < 0;
+    return std::memcmp(&addr, &address.addr, sizeof(in6_addr)) < 0;
 }
 
 Address::operator bool() const
 {
-    return _addr.s6_addr32[0] != 0 || _addr.s6_addr32[1] != 0 || _addr.s6_addr32[2] != 0 || _addr.s6_addr32[3] != 0;
+    return addr.s6_addr32[0] != 0 || addr.s6_addr32[1] != 0 || addr.s6_addr32[2] != 0 || addr.s6_addr32[3] != 0;
 }
 
 Logger& operator<<(Logger& logger, const Address& address)

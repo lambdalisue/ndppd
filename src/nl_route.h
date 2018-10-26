@@ -27,6 +27,10 @@ class NetlinkRoute {
 public:
     NetlinkRoute(const Cidr& cidr, const std::shared_ptr<Interface>& iface);
 
+    const Cidr& cidr() const;
+
+    const std::shared_ptr<Interface>& iface() const;
+
 private:
     Cidr _cidr;
     std::shared_ptr<Interface> _iface;

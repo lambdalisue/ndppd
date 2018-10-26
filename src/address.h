@@ -26,15 +26,13 @@ NDPPD_NS_BEGIN
 
 class Address {
 public:
+    in6_addr addr;
+
     Address();
 
     explicit Address(const in6_addr& addr);
 
     explicit Address(const std::string& address);
-
-    const in6_addr& c_addr() const;
-
-    in6_addr& addr();
 
     bool is_unicast() const;
 
@@ -49,9 +47,6 @@ public:
     bool operator<(const Address& address) const;
 
     explicit operator bool() const;
-
-private:
-    in6_addr _addr;
 };
 
 Logger& operator<<(Logger& logger, const Address& address);

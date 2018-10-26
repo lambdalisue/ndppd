@@ -32,53 +32,55 @@ NDPPD_NS_BEGIN
 
 namespace {
 std::unique_ptr<Socket> sockets;
-std::set<NetlinkAddress> g_local_addresses;
+std::list<std::unique_ptr<NetlinkAddress>> g_local_addresses;
 std::list<std::unique_ptr<NetlinkRoute>> g_routes;
-}
 
-static void handler(Socket& socket)
+void handle_new_address(nlmsghdr* nlh)
 {
-
-}
-
-static void handle_address(nlmsghdr* nlh)
-{
-    static Address localhost("::1");
-
-    auto data = static_cast<ifaddrmsg*>(NLMSG_DATA(nlh));
+    auto ifaddr = static_cast<ifaddrmsg*>(NLMSG_DATA(nlh));
     int len = IFA_PAYLOAD(nlh);
 
-    for (auto rta = IFA_RTA(data); RTA_OK(rta, len); rta = RTA_NEXT(rta, len)) {
-        if (rta->rta_type == IFA_ADDRESS) {
-            auto address = Address(*static_cast<in6_addr*>(RTA_DATA(rta)));
+    Address address {};
 
-            if (address == localhost)
-                continue;
-
-            g_local_addresses.insert(NetlinkAddress(address, Interface::get_or_create(data->ifa_index)));
-            Logger::info() << "Registered local address " << address << " index " << data->ifa_index;
-        }
+    for (auto rta = IFA_RTA(ifaddr); RTA_OK(rta, len); rta = RTA_NEXT(rta, len)) {
+        if (rta->rta_type == IFA_ADDRESS)
+            address = Address(*static_cast<in6_addr*>(RTA_DATA(rta)));
     }
+
+    static Address localhost("::1");
+
+    if (!address || address == localhost)
+        return;
+
+    auto iface = Interface::get_or_create(ifaddr->ifa_index);
+    Logger::info() << "Netlink: Registered new local address " << address << " on " << iface->name();
+    g_local_addresses.push_back(std::make_unique<NetlinkAddress>(address, std::move(iface)));
 }
 
-static void handle_new_route(const nlmsghdr* nlh)
+void handle_new_route(const nlmsghdr* nlh)
 {
-    Logger::error() << "new route";
-
-    auto data = static_cast<rtmsg*>(NLMSG_DATA(nlh));
+    auto rt = static_cast<rtmsg*>(NLMSG_DATA(nlh));
     int len = RTM_PAYLOAD(nlh);
 
-    for (auto rta = RTM_RTA(data); RTA_OK(rta, len); rta = RTA_NEXT(rta, len)) {
-        if (rta->rta_type == RTA_DST) {
-            Cidr cidr;
-            cidr.addr() = *static_cast<in6_addr*>(RTA_DATA(rta));
+    Cidr cidr {};
+    unsigned int oif {};
 
-            Logger::error() << "payload";
-        }
+    for (auto rta = RTM_RTA(rt); RTA_OK(rta, len); rta = RTA_NEXT(rta, len)) {
+        if (rta->rta_type == RTA_DST)
+            cidr = Cidr(*static_cast<in6_addr*>(RTA_DATA(rta)), rt->rtm_dst_len);
+        else if (rta->rta_type == RTA_OIF)
+            oif = *static_cast<unsigned int*>(RTA_DATA(rta));
     }
 
+    if (!cidr || oif == 0)
+        return;
+
+    auto iface = Interface::get_or_create(oif);
+    Logger::info() << "Netlink: Registered new route " << cidr << " via " << iface->name();
+    g_routes.push_back(std::make_unique<NetlinkRoute>(cidr, std::move(iface)));
 }
 
+}
 
 void Netlink::initialize()
 {
@@ -91,7 +93,7 @@ void Netlink::finalize()
     sockets.reset();
 }
 
-const Range<std::set<NetlinkAddress>::const_iterator> Netlink::local_addresses()
+const Range<std::list<std::unique_ptr<NetlinkAddress>>::const_iterator> Netlink::local_addresses()
 {
     return { g_local_addresses.cbegin(), g_local_addresses.cend() };
 }
@@ -123,7 +125,7 @@ void Netlink::load_local_ips()
                 return;
 
             case RTM_NEWADDR:
-                handle_address(nlh);
+                handle_new_address(nlh);
                 continue;
 
             default:
@@ -136,7 +138,9 @@ void Netlink::load_local_ips()
 bool Netlink::is_local(const Address& address)
 {
     return std::find_if(g_local_addresses.cbegin(), g_local_addresses.cend(),
-            [&](const NetlinkAddress& nla) { return nla.address() == address; }) != g_local_addresses.end();
+            [&](const std::unique_ptr<NetlinkAddress>& nla) {
+                return nla->address() == address;
+            }) != g_local_addresses.end();
 }
 
 void Netlink::load_routes()

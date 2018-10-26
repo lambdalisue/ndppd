@@ -26,26 +26,25 @@ NDPPD_NS_BEGIN
 
 class Cidr {
 public:
-    Cidr();
+    in6_addr addr;
 
-    Cidr(const Cidr& cidr);
+    Cidr();
 
     explicit Cidr(std::string string);
 
     explicit Cidr(const in6_addr& addr, int prefix = 128);
 
-    const struct in6_addr& addr() const;
-
     explicit operator bool() const;
 
     const std::string to_string() const;
+
+    void prefix(int prefix);
 
     int prefix() const;
 
     bool operator%(const Address& address) const;
 
 private:
-    in6_addr _addr;
     int _prefix;
 };
 

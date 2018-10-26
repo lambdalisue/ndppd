@@ -34,7 +34,7 @@ public:
 
     static void finalize();
 
-    static const Range<std::set<NetlinkAddress>::const_iterator> local_addresses();
+    static const Range<std::list<std::unique_ptr<NetlinkAddress>>::const_iterator> local_addresses();
 
     static void load_local_ips();
 
