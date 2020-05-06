@@ -47,3 +47,9 @@ nd-proxy: nd-proxy.c
 
 clean:
 	rm -f ndppd ndppd.conf.5.gz ndppd.1.gz ${OBJS} nd-proxy
+
+docker-build:
+	docker build -t ndppd-builder .
+
+docker-run:
+	docker run -v $$(pwd):/ndppd -w /ndppd -it --rm ndppd-builder
