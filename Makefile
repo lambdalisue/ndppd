@@ -53,3 +53,18 @@ docker-build:
 
 docker-run:
 	docker run -v $$(pwd):/ndppd -w /ndppd -it --rm ndppd-builder
+
+package:
+	mkdir -p .pack/ndppd/local/sbin
+	cp ndppd .pack/ndppd/local/sbin/ndppd
+	cat ndppd-init-debian-jessi \
+	    | perl -pe 's!/usr/local/sbin!/ndppd/local/sbin!g;' \
+	    > .pack/ndppd/local/sbin/ndppd.init
+	chmod +x .pack/ndppd/local/sbin/ndppd
+	chmod +x .pack/ndppd/local/sbin/ndppd.init
+	mkdir -p .pack/config/scripts/post-config.d
+	echo "#!/bin/sh" > .pack/config/scripts/post-config.d/ndppd.sh
+	echo "/ndppd/local/sbin/ndppd.init start" >> .pack/config/scripts/post-config.d/ndppd.sh
+	chmod +x .pack/config/scripts/post-config.d/ndppd.sh
+	(cd .pack; tar -zcvf ../ndppd.tar.gz .)
+	rm -rf .pack
